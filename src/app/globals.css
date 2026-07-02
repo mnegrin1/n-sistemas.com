@@ -547,6 +547,7 @@ a {
   font-weight: 300;
   letter-spacing: -0.02em;
   color: var(--text-heading);
+  text-transform: capitalize;
 }
 
 .hero-subtitle {
@@ -770,6 +771,7 @@ a {
   background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  text-transform: capitalize;
 }
 
 @media (min-width: 768px) {
