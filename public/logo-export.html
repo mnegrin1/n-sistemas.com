@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>n-sistemas.com — Logo Export</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=DM+Serif+Display&family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Instrument+Serif:ital@0;1&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400..700;1,400..700&family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&family=Noto+Serif:ital,wght@0,100..900;1,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&family=Spectral:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,200;1,300;1,400&family=PT+Serif:ital,wght@0,400;0,700;1,400&family=Bitter:ital,wght@0,100..900;1,100..900&family=Vollkorn:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Inter", system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      background: #0f0f1a;
+      color: #e2e8f0;
+      padding: 40px 20px;
+      gap: 32px;
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 400;
+      opacity: 0.6;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    /* ── Controls Panel ── */
+    .controls {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 24px 32px;
+      display: flex;
+      gap: 32px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .control-group label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      opacity: 0.45;
+      font-weight: 500;
+    }
+
+    .control-group select,
+    .control-group input[type="range"] {
+      appearance: none;
+      -webkit-appearance: none;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #fff;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      min-width: 200px;
+      transition: border-color 0.2s;
+    }
+
+    .control-group select:hover,
+    .control-group select:focus {
+      border-color: rgba(255,255,255,0.25);
+      outline: none;
+    }
+
+    .control-group select option {
+      background: #1a1a2e;
+      color: #fff;
+    }
+
+    .control-group input[type="range"] {
+      padding: 0;
+      height: 36px;
+      min-width: 160px;
+    }
+
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .range-value {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      min-width: 50px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .control-group select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 30px;
+    }
+
+    .font-status {
+      font-size: 0.7rem;
+      margin-top: 2px;
+      height: 14px;
+    }
+    .font-status.ok { color: #10b981; }
+    .font-status.fallback { color: #f59e0b; }
+
+    /* ── Logo Previews ── */
+    .export-row {
+      display: flex;
+      gap: 48px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .export-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .label {
+      font-size: 0.75rem;
+      opacity: 0.4;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .logo-preview {
+      padding: 40px 60px;
+      border-radius: 14px;
+      display: flex;
+      align-items: baseline;
+      gap: 2px;
+      text-transform: lowercase;
+      transition: all 0.3s ease;
+    }
+
+    .logo-preview.dark {
+      background: #030712;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .logo-preview.light {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+
+    .logo-main {
+      font-weight: 300;
+      letter-spacing: -0.03em;
+      transition: font-family 0.3s, font-size 0.2s;
+    }
+    .logo-main.dark { color: #ffffff; }
+    .logo-main.light { color: #0f172a; }
+
+    .logo-dot {
+      font-weight: 400;
+      opacity: 0.8;
+      transition: font-family 0.3s, font-size 0.2s;
+    }
+    .logo-dot.dark { color: #ffffff; }
+    .logo-dot.light { color: #0f172a; }
+
+    /* ── Buttons ── */
+    button.download-btn {
+      padding: 9px 20px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.04);
+      color: #e2e8f0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+      letter-spacing: 0.02em;
+    }
+
+    button.download-btn:hover {
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.25);
+    }
+
+    .instructions {
+      max-width: 600px;
+      text-align: center;
+      font-size: 0.78rem;
+      opacity: 0.35;
+      line-height: 1.6;
+    }
+
+    canvas { display: none; }
+  </style>
+</head>
+<body>
+
+  <h1>Logo Export — n-sistemas.com</h1>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="control-group">
+      <label>Fuente</label>
+      <select id="fontSelect" onchange="updatePreviews()">
+        <option value='"Test Tiempos Headline Light", "Test Tiempos Headline Light Placeholder", serif'>✦ Test Tiempos Headline Light (actual)</option>
+        <option value='"Playfair Display", serif'>Playfair Display</option>
+        <option value='"Cormorant Garamond", serif'>Cormorant Garamond</option>
+        <option value='"EB Garamond", serif'>EB Garamond</option>
+        <option value='"Lora", serif'>Lora</option>
+        <option value='"Merriweather", serif'>Merriweather</option>
+        <option value='"Source Serif 4", serif'>Source Serif 4</option>
+        <option value='"Libre Baskerville", serif'>Libre Baskerville</option>
+        <option value='"Noto Serif", serif'>Noto Serif</option>
+        <option value='"DM Serif Display", serif'>DM Serif Display</option>
+        <option value='"Instrument Serif", serif'>Instrument Serif</option>
+        <option value='"Crimson Text", serif'>Crimson Text</option>
+        <option value='"Spectral", serif'>Spectral</option>
+        <option value='"PT Serif", serif'>PT Serif</option>
+        <option value='"Bitter", serif'>Bitter</option>
+        <option value='"Vollkorn", serif'>Vollkorn</option>
+        <option value='Georgia, serif'>Georgia (sistema)</option>
+        <option value='"Times New Roman", Times, serif'>Times New Roman (sistema)</option>
+      </select>
+      <div class="font-status" id="fontStatus"></div>
+    </div>
+
+    <div class="control-group">
+      <label>Peso fuente</label>
+      <select id="fontWeight" onchange="updatePreviews()">
+        <option value="100">100 — Thin</option>
+        <option value="200">200 — Extra Light</option>
+        <option value="300" selected>300 — Light ✦</option>
+        <option value="400">400 — Regular</option>
+        <option value="500">500 — Medium</option>
+        <option value="600">600 — Semi Bold</option>
+        <option value="700">700 — Bold</option>
+        <option value="800">800 — Extra Bold</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label>Tamaño "n-sistemas"</label>
+      <div class="range-row">
+        <input type="range" id="mainSize" min="16" max="72" value="42" step="1" oninput="updatePreviews()">
+        <span class="range-value" id="mainSizeVal">42px</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>Tamaño ".com"</label>
+      <div class="range-row">
+        <input type="range" id="dotSize" min="8" max="56" value="32" step="1" oninput="updatePreviews()">
+        <span class="range-value" id="dotSizeVal">32px</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Previews -->
+  <div class="export-row">
+    <!-- Dark Mode -->
+    <div class="export-card">
+      <span class="label">Modo Oscuro</span>
+      <div class="logo-preview dark" id="logo-dark">
+        <span class="logo-main dark" id="mainDark">n-sistemas</span><span class="logo-dot dark" id="dotDark">.com</span>
+      </div>
+      <button class="download-btn" onclick="exportLogo('dark')">⬇ Descargar PNG</button>
+    </div>
+
+    <!-- Light Mode -->
+    <div class="export-card">
+      <span class="label">Modo Claro</span>
+      <div class="logo-preview light" id="logo-light">
+        <span class="logo-main light" id="mainLight">n-sistemas</span><span class="logo-dot light" id="dotLight">.com</span>
+      </div>
+      <button class="download-btn" onclick="exportLogo('light')">⬇ Descargar PNG</button>
+    </div>
+
+    <!-- Favicon / Icon -->
+    <div class="export-card">
+      <span class="label">Icono / Favicon ("n")</span>
+      <div class="logo-preview dark" id="logo-icon-preview" style="width: 130px; height: 130px; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 0;">
+        <span id="faviconPreviewChar" style="font-size: 72px; line-height: 1; transform: translateY(-4px); display: inline-block;">n</span>
+      </div>
+      <div class="btn-row" style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+        <button class="download-btn" onclick="exportFavicon(false)">⬇ Transparente</button>
+        <button class="download-btn" onclick="exportFavicon(true, 'dark')">⬇ Fondo Oscuro</button>
+        <button class="download-btn" onclick="exportFavicon(true, 'light')">⬇ Fondo Claro</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="instructions">
+    Los PNGs se exportan con fondo transparente a 4× resolución.<br>
+    La fuente "Test Tiempos Headline Light" debe estar instalada en el sistema para renderizar correctamente.
+  </p>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+    function getFont() {
+      return document.getElementById('fontSelect').value;
+    }
+
+    function getFontWeight() {
+      return parseInt(document.getElementById('fontWeight').value);
+    }
+
+    function getMainSize() {
+      return parseInt(document.getElementById('mainSize').value);
+    }
+
+    function getDotSize() {
+      return parseInt(document.getElementById('dotSize').value);
+    }
+
+    // Check if a font is actually available in the browser
+    function isFontAvailable(fontName) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const testStr = 'abcdefghijklmnopqrstuvwxyz0123456789';
+
+      ctx.font = '72px monospace';
+      const defaultWidth = ctx.measureText(testStr).width;
+
+      ctx.font = `72px ${fontName}, monospace`;
+      const testWidth = ctx.measureText(testStr).width;
+
+      return defaultWidth !== testWidth;
+    }
+
+    function updateFontStatus() {
+      const el = document.getElementById('fontStatus');
+      const selected = document.getElementById('fontSelect');
+      const fontValue = selected.value;
+
+      // Extract primary font name from the value
+      const match = fontValue.match(/"([^"]+)"/);
+      if (match) {
+        const fontName = match[1];
+        if (isFontAvailable(fontName)) {
+          el.className = 'font-status ok';
+          el.textContent = `✓ "${fontName}" detectada`;
+        } else {
+          el.className = 'font-status fallback';
+          el.textContent = `⚠ "${fontName}" no encontrada — usando fallback`;
+        }
+      } else {
+        el.className = 'font-status ok';
+        el.textContent = `✓ Fuente del sistema`;
+      }
+    }
+
+    function updatePreviews() {
+      const font = getFont();
+      const weight = getFontWeight();
+      const mainPx = getMainSize();
+      const dotPx = getDotSize();
+
+      // Update value labels
+      document.getElementById('mainSizeVal').textContent = mainPx + 'px';
+      document.getElementById('dotSizeVal').textContent = dotPx + 'px';
+
+      // Update all logo elements
+      ['Dark', 'Light'].forEach(mode => {
+        const main = document.getElementById('main' + mode);
+        const dot = document.getElementById('dot' + mode);
+        main.style.fontFamily = font;
+        main.style.fontSize = mainPx + 'px';
+        main.style.fontWeight = weight;
+        dot.style.fontFamily = font;
+        dot.style.fontSize = dotPx + 'px';
+        dot.style.fontWeight = Math.min(weight + 100, 900);
+      });
+
+      // Update favicon preview
+      const favChar = document.getElementById('faviconPreviewChar');
+      if (favChar) {
+        favChar.style.fontFamily = font;
+        favChar.style.fontWeight = weight;
+      }
+
+      updateFontStatus();
+    }
+
+    function exportLogo(mode) {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const scale = 4;
+
+      const font = getFont();
+      const weight = getFontWeight();
+      const mainPx = getMainSize();
+      const dotPx = getDotSize();
+
+      const mainText = 'n-sistemas';
+      const dotText = '.com';
+      const fontMain = `${weight} ${mainPx}px ${font}`;
+      const dotWeight = Math.min(weight + 100, 900);
+      const fontDot = `${dotWeight} ${dotPx}px ${font}`;
+
+      // Measure text
+      ctx.font = fontMain;
+      const mainWidth = ctx.measureText(mainText).width;
+      ctx.font = fontDot;
+      const dotWidth = ctx.measureText(dotText).width;
+
+      const totalWidth = mainWidth + dotWidth + 4;
+      const height = Math.max(mainPx, dotPx) + 20;
+      const padding = 24;
+
+      canvas.width = (totalWidth + padding * 2) * scale;
+      canvas.height = (height + padding * 2) * scale;
+      ctx.scale(scale, scale);
+
+      // Transparent background
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const color = mode === 'dark' ? '#ffffff' : '#0f172a';
+      const baseline = padding + Math.max(mainPx, dotPx);
+
+      // Draw main text
+      ctx.font = fontMain;
+      ctx.fillStyle = color;
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(mainText, padding, baseline);
+
+      // Draw .com
+      ctx.font = fontDot;
+      ctx.globalAlpha = 0.8;
+      ctx.fillText(dotText, padding + mainWidth + 2, baseline);
+      ctx.globalAlpha = 1;
+
+      // Download
+      const link = document.createElement('a');
+      link.download = `logo-n-sistemas-${mode}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    function exportFavicon(hasBg, bgMode) {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const scale = 4; // High-res export (e.g. 512x512)
+
+      const font = getFont();
+      const weight = getFontWeight();
+      const size = 128; // Standard favicon size
+      
+      canvas.width = size * scale;
+      canvas.height = size * scale;
+      ctx.scale(scale, scale);
+
+      ctx.clearRect(0, 0, size, size);
+
+      if (hasBg) {
+        // Draw square background
+        ctx.fillStyle = bgMode === 'dark' ? '#030712' : '#f8fafc';
+        ctx.fillRect(0, 0, size, size);
+      }
+
+      // Draw the letter 'n' centered
+      ctx.font = `${weight} ${size * 0.7}px ${font}`;
+      ctx.fillStyle = hasBg ? (bgMode === 'dark' ? '#ffffff' : '#0f172a') : '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      // Lowercase 'n' is usually low in line, let's offset it slightly upwards for visual center
+      const yOffset = size * 0.06; 
+      ctx.fillText('n', size / 2, size / 2 - yOffset);
+
+      // Download
+      const link = document.createElement('a');
+      const filenameSuffix = hasBg ? `bg-${bgMode}` : 'transparent';
+      link.download = `favicon-n-${filenameSuffix}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    // Initialize
+    updatePreviews();
+  </script>
+</body>
+</html>
