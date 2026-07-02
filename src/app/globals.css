@@ -451,23 +451,7 @@ a {
   color: var(--text-heading);
 }
 
-.header .logo {
-  padding: 4px 12px;
-  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 50%);
-  border: none;
-  border-radius: 0;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  box-shadow: none;
-  transition: opacity 0.3s ease, background 0.3s ease;
-}
 
-.header .logo:hover {
-  opacity: 0.85;
-  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 50%);
-  border: none;
-  box-shadow: none;
-}
 
 .logo-icon {
   width: 32px;
@@ -1472,19 +1456,12 @@ html.light-theme .admin-nav-item:hover, html.light-theme .admin-nav-item.active 
   letter-spacing: -0.03em;
   text-transform: lowercase;
   color: #ffffff; /* user requested white logo */
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   display: inline-flex;
   align-items: baseline;
-  vertical-align: middle;
-  padding: 4px 12px;
-  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 50%);
-  border: none;
-  border-radius: 0;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  box-shadow: none;
-  margin-left: 6px;
-  margin-right: 6px;
+  vertical-align: baseline;
+  margin-left: 5px;
+  margin-right: 5px;
 }
 
 .table-header-logo-dot {
