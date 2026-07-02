@@ -28,8 +28,15 @@ const t = {
       title: "¿Seguir perdiendo ventas o tomar el control de tu inmobiliaria?",
       subtitle: "Descubrí cómo cambia tu facturación cuando pasás de usar planillas sueltas a tener una plataforma que automatiza tu seguimiento.",
       headers: ["Característica", "Herramientas Aisladas", "Solución n-sistemas.com"],
-      row1: ["Costos Mensuales", "✕ Licencias mensuales por cada vendedor que encarecen tu negocio", "✓ Inversión única por tu propio software, sin pagos de alquiler eterno"],
-      row2: ["Implementación", "✕ Meses de configuración, problemas técnicos y pérdida de tiempo", "✓ Lanzamiento rápido gracias a nuestra base tecnológica pre-construida"]
+      rows: [
+        ["Costos Mensuales", "✕ Licencias mensuales por cada vendedor que encarecen tu negocio", "✓ Inversión única por tu propio software, sin pagos de alquiler eterno"],
+        ["Implementación", "✕ Meses de configuración, problemas técnicos y pérdida de tiempo", "✓ Lanzamiento rápido gracias a nuestra base tecnológica pre-construida"],
+        ["Propiedad del Software", "✕ Alquilás un servicio externo; si dejas de pagar, te quedás sin nada", "✓ Sos dueño total del código y la base de datos de por vida"],
+        ["Base de Datos", "✕ Tus contactos están en servidores ajenos y expuestos a terceros", "✓ Tu información está en tu propio servidor privado y seguro"],
+        ["Integración con WhatsApp", "✕ Requiere pagar costosos intermediarios y complejas APIs de terceros", "✓ Conexión nativa directa integrada a tus flujos comerciales"],
+        ["Seguimiento Comercial", "✕ Leads olvidados en planillas de Excel o chats de asesores que se van", "✓ Captación automática y asignación inteligente al instante"],
+        ["Personalización", "✕ Te adaptás a una plantilla rígida e idéntica a tus competidores", "✓ Reportes y módulos adaptados 100% a tu forma de trabajar"]
+      ]
     },
     modules: {
       badge: "Equipamiento comercial",
@@ -213,8 +220,15 @@ const t = {
       title: "Keep losing sales or take control of your real estate agency?",
       subtitle: "Find out how your revenue changes when you transition from scattered spreadsheets to an automated follow-up platform.",
       headers: ["Feature", "Isolated Tools", "n-sistemas.com Solution"],
-      row1: ["Monthly Costs", "✕ Monthly licenses for each agent that make your business expensive", "✓ One-time investment for your own software, no eternal rent payments"],
-      row2: ["Implementation", "✕ Months of configuration, technical issues, and wasted time", "✓ Fast launch thanks to our pre-built technological foundation"]
+      rows: [
+        ["Monthly Costs", "✕ Monthly licenses for each agent that make your business expensive", "✓ One-time investment for your own software, no eternal rent payments"],
+        ["Implementation", "✕ Months of configuration, technical issues, and wasted time", "✓ Fast launch thanks to our pre-built technological foundation"],
+        ["Software Ownership", "✕ You rent an external service; if you stop paying, you are left with nothing", "✓ You fully own the code and the database for life"],
+        ["Database", "✕ Your contacts are stored on foreign servers, exposed to third parties", "✓ Your information is on your own secure private server"],
+        ["WhatsApp Integration", "✕ Requires paying expensive intermediaries and complex third-party APIs", "✓ Native direct integration built into your commercial flows"],
+        ["Lead Tracking", "✕ Leads forgotten in Excel sheets or in chats of agents who exit", "✓ Automatic capturing and instant intelligent assignment by area"],
+        ["Customization", "✕ You adapt to a rigid template that looks identical to competitors", "✓ Reports and modules adapted 100% to your way of working"]
+      ]
     },
     modules: {
       badge: "Commercial suite",
@@ -398,8 +412,15 @@ const t = {
       title: "Continuar perdendo vendas ou assumir o controle da sua imobiliária?",
       subtitle: "Descubra como seu faturamento muda ao passar de planilhas soltas para uma plataforma que automatiza seu acompanhamento.",
       headers: ["Característica", "Ferramentas Isoladas", "Solução n-sistemas.com"],
-      row1: ["Custos Mensais", "✕ Licenças mensais por cada vendedor que encarecem seu negócio", "✓ Investimento único pelo seu próprio software, sem aluguel eterno"],
-      row2: ["Implementación", "✕ Meses de configuração, problemas técnicos e desperdício de tempo", "✓ Lançamento rápido graças à nossa base tecnológica pré-construída"]
+      rows: [
+        ["Custos Mensais", "✕ Licenças mensais por cada vendedor que encarecem seu negócio", "✓ Investimento único pelo seu próprio software, sem aluguel eterno"],
+        ["Implementação", "✕ Meses de configuração, problemas técnicos e desperdício de tempo", "✓ Lançamento rápido graças à nossa base tecnológica pré-construída"],
+        ["Propriedade do Software", "✕ Você aluga um serviço externo; se parar de pagar, fica sem nada", "✓ Você é proprietário absoluto do código e do banco de dados para sempre"],
+        ["Banco de Dados", "✕ Seus contatos ficam em servidores alheios e expostos a terceiros", "✓ Suas informações ficam no seu próprio servidor privado e seguro"],
+        ["Integração com WhatsApp", "✕ Requer pagar intermediários caros e APIs complexas de terceiros", "✓ Integração direta nativa incorporada aos seus fluxos comerciais"],
+        ["Acompanhamento Comercial", "✕ Leads esquecidos em planilhas ou chats de corretores que saem", "✓ Captura automática e distribuição inteligente instantânea"],
+        ["Personalização", "✕ Você se adapta a um modelo rígido e idêntico aos concorrentes", "✓ Relatórios e módulos adaptados 100% ao seu modo de trabalhar"]
+      ]
     },
     modules: {
       badge: "Suíte comercial",
@@ -587,49 +608,11 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // 1. Initial quick detection based on browser locales and timezones
-    const browserLang = navigator.language || '';
-    let detectedLang: 'es' | 'en' | 'pt' = 'en';
-    if (browserLang.startsWith('pt')) {
-      detectedLang = 'pt';
-    } else if (browserLang.startsWith('es')) {
-      detectedLang = 'es';
-    } else {
-      try {
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        if (tz.includes('Sao_Paulo') || tz.includes('Lisbon')) {
-          detectedLang = 'pt';
-        } else if (
-          tz.includes('Buenos_Aires') || 
-          tz.includes('Santiago') || 
-          tz.includes('Bogota') || 
-          tz.includes('Mexico') || 
-          tz.includes('Madrid')
-        ) {
-          detectedLang = 'es';
-        }
-      } catch (e) {}
+    // Default to Spanish, but restore saved preference if it exists
+    const savedLang = localStorage.getItem("language");
+    if (savedLang === 'es' || savedLang === 'en' || savedLang === 'pt') {
+      setLanguage(savedLang);
     }
-    setLanguage(detectedLang);
-
-    // 2. Fetch precise country detection in the background to refine
-    fetch('https://ipapi.co/json/')
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.country_code) {
-          const country = data.country_code.toUpperCase();
-          if (country === 'BR' || country === 'PT') {
-            setLanguage('pt');
-          } else if (['AR', 'MX', 'ES', 'CO', 'CL', 'PE', 'VE', 'EC', 'UY', 'PY', 'BO', 'GT', 'HN', 'SV', 'NI', 'CR', 'PA', 'DO', 'PR'].includes(country)) {
-            setLanguage('es');
-          } else {
-            setLanguage('en');
-          }
-        }
-      })
-      .catch(() => {
-        // Fallback silently to navigator.language detection
-      });
   }, []);
 
   const toggleTheme = () => {
@@ -694,7 +677,11 @@ export default function Home() {
               </svg>
               <select
                 value={language}
-                onChange={(e) => setLanguage(e.target.value as 'es' | 'en' | 'pt')}
+                onChange={(e) => {
+                  const l = e.target.value as 'es' | 'en' | 'pt';
+                  setLanguage(l);
+                  localStorage.setItem("language", l);
+                }}
                 className="lang-select"
               >
                 <option value="es">ES</option>
@@ -997,24 +984,17 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td><strong>{t[language].table.row1[0]}</strong></td>
-                  <td>
-                    <span className="tag-fail">{t[language].table.row1[1]}</span>
-                  </td>
-                  <td>
-                    <span className="tag-success">{t[language].table.row1[2]}</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td><strong>{t[language].table.row2[0]}</strong></td>
-                  <td>
-                    <span className="tag-fail">{t[language].table.row2[1]}</span>
-                  </td>
-                  <td>
-                    <span className="tag-success">{t[language].table.row2[2]}</span>
-                  </td>
-                </tr>
+                {t[language].table.rows.map((row, idx) => (
+                  <tr key={idx}>
+                    <td><strong>{row[0]}</strong></td>
+                    <td>
+                      <span className="tag-fail">{row[1]}</span>
+                    </td>
+                    <td>
+                      <span className="tag-success">{row[2]}</span>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
