@@ -488,8 +488,8 @@ export default function AdminDemo() {
 
         <div>
           <Link href="/" className="btn btn-secondary" style={{ width: "100%", fontSize: "0.8rem", padding: "8px 12px" }}>
-            <span className="desktop-only">← Volver a la Landing</span>
-            <span className="mobile-only">← Volver</span>
+            <span className="desktop-only">← Página principal</span>
+            <span className="mobile-only">← Principal</span>
           </Link>
         </div>
       </aside>
