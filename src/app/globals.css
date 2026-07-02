@@ -451,6 +451,23 @@ a {
   color: var(--text-heading);
 }
 
+.header .logo {
+  padding: 6px 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 99px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.header .logo:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.05);
+}
+
 .logo-icon {
   width: 32px;
   height: 32px;
@@ -1453,12 +1470,20 @@ html.light-theme .admin-nav-item:hover, html.light-theme .admin-nav-item.active 
   font-weight: 300;
   letter-spacing: -0.03em;
   text-transform: lowercase;
-  color: var(--secondary);
-  font-size: 1.25rem;
+  color: #ffffff; /* user requested white logo */
+  font-size: 1.15rem;
   display: inline-flex;
   align-items: baseline;
-  vertical-align: baseline;
-  margin: 0 4px;
+  vertical-align: middle;
+  padding: 5px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 99px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  margin-left: 6px;
+  margin-right: 6px;
 }
 
 .table-header-logo-dot {
