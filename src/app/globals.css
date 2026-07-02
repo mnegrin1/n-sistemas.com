@@ -23,12 +23,13 @@
   --border-radius-md: 16px;
   --border-radius-lg: 24px;
   --bg-column: rgba(255, 255, 255, 0.02);
+  --bg-section-muted: rgba(1, 3, 10, 0.4);
 }
 
 /* Light Theme Variables Override */
 html.light-theme {
-  --bg-color: #f8fafc;
-  --bg-darker: #f1f5f9;
+  --bg-color: #ffffff;
+  --bg-darker: #f8fafc;
   --bg-card: #ffffff;
   --bg-card-hover: #ffffff;
   --border-color: #e2e8f0;
@@ -39,20 +40,49 @@ html.light-theme {
   --primary-glow: rgba(59, 130, 246, 0.05);
   --secondary-glow: rgba(6, 182, 212, 0.05);
   --bg-column: #e2e8f0;
+  --bg-section-muted: #f8fafc;
 }
 
 /* Light Mode Aesthetic Styling Overrides */
 html.light-theme .header {
-  background: rgba(255, 255, 255, 0.85);
-  border-bottom: 1px solid #e2e8f0;
+  background: rgba(3, 7, 18, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-html.light-theme .nav-link {
-  color: #4b5563;
+html.light-theme .header .logo {
+  color: #ffffff;
 }
 
-html.light-theme .nav-link:hover {
-  color: var(--primary);
+html.light-theme .header .nav-link {
+  color: #94a3b8;
+}
+
+html.light-theme .header .nav-link:hover {
+  color: #ffffff;
+}
+
+html.light-theme .header .theme-toggle-btn {
+  color: #94a3b8;
+}
+
+html.light-theme .header .theme-toggle-btn:hover {
+  color: #ffffff;
+}
+
+html.light-theme .header .lang-selector-wrap {
+  color: #94a3b8;
+}
+
+html.light-theme .header .lang-selector-wrap:hover {
+  color: #ffffff;
+}
+
+html.light-theme .header .lang-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+html.light-theme .header .lang-selector-wrap:hover .lang-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
 }
 
 html.light-theme .btn-secondary {
@@ -215,8 +245,8 @@ body {
 }
 
 html.light-theme body {
-  background: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.06) 0%, rgba(249, 250, 251, 0) 60%),
-              radial-gradient(circle at 10% 40%, rgba(6, 182, 212, 0.03) 0%, rgba(249, 250, 251, 0) 50%);
+  background: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.06) 0%, rgba(255, 255, 255, 0) 60%),
+              radial-gradient(circle at 10% 40%, rgba(6, 182, 212, 0.03) 0%, rgba(255, 255, 255, 0) 50%);
 }
 
 /* Scrollbar Styling */
@@ -1097,7 +1127,7 @@ a {
 }
 
 .form-control {
-  background: rgba(255, 255, 255, 0.03);
+  background: #060a13;
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-sm);
   padding: 14px 18px;
@@ -1110,13 +1140,31 @@ a {
 .form-control:focus {
   outline: none;
   border-color: var(--primary);
-  background: rgba(59, 130, 246, 0.03);
+  background: #081125;
   box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
 }
 
 textarea.form-control {
   resize: vertical;
   min-height: 120px;
+}
+
+/* Autocomplete/Autofill styles to prevent browser from overriding dark background */
+.form-control:-webkit-autofill,
+.form-control:-webkit-autofill:hover, 
+.form-control:-webkit-autofill:focus, 
+.form-control:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #060a13 inset !important;
+  -webkit-text-fill-color: var(--text-heading) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+html.light-theme .form-control:-webkit-autofill,
+html.light-theme .form-control:-webkit-autofill:hover, 
+html.light-theme .form-control:-webkit-autofill:focus, 
+html.light-theme .form-control:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #0f172a !important;
 }
 
 .form-btn {

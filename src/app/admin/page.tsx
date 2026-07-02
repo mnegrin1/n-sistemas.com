@@ -55,7 +55,134 @@ const AUTOMATION_MOCK_CONTACTS: MockContact[] = [
 ];
 
 export default function AdminDemo() {
-  const [activeTab, setActiveTab] = useState<"crm-dashboard" | "crm-kanban" | "satellite" | "whatsapp" | "feature-request">("crm-dashboard");
+  const [activeTab, setActiveTab] = useState<"crm-dashboard" | "crm-kanban" | "satellite" | "whatsapp" | "whatsapp-emails" | "whatsapp-messages" | "whatsapp-rules" | "whatsapp-flow" | "feature-request">("crm-dashboard");
+
+  // Email Automations state
+  const EMAIL_TEMPLATES = {
+    welcome: {
+      subject: "¡Te damos la bienvenida a n-sistemas! Encontrá tu propiedad ideal",
+      body: "Hola [Nombre],\n\nGracias por contactarte con nosotros. Hemos recibido tu consulta sobre [Propiedad]. Un asesor especializado se pondrá en contacto en breve.\n\nMientras tanto, podés ver todos los detalles y el plan de financiación en el archivo adjunto.\n\nSaludos cordiales,\nEl equipo de n-sistemas."
+    },
+    ficha: {
+      subject: "Ficha Técnica y Detalles de Financiación - [Propiedad]",
+      body: "Estimado/a [Nombre],\n\nAdjunto a este correo vas a encontrar la carpeta comercial con todos los detalles de [Propiedad], incluyendo planos de mensura, servicios habilitados y el simulador de cuotas.\n\nContamos con planes de hasta 48 cuotas fijas en USD.\n\nQuedamos a tu disposición por cualquier consulta.\n\nAtentamente,\nÁrea de Ventas."
+    },
+    reunion: {
+      subject: "Confirmación de Reunión y Visita al Lote - [Propiedad]",
+      body: "¡Hola [Nombre]!\n\nConfirmamos tu visita programada para conocer [Propiedad]. Nos encontraremos directamente en el acceso principal.\n\nDetalles del encuentro:\n- Asesor: Martín Rodríguez\n- Fecha: Sábado a las 10:30 AM\n- Ubicación: Enlace en adjunto\n\n¡Te esperamos!\nSoporte n-sistemas."
+    }
+  };
+
+  const [selectedTemplate, setSelectedTemplate] = useState<"welcome" | "ficha" | "reunion">("welcome");
+  const [emailSubject, setEmailSubject] = useState(EMAIL_TEMPLATES.welcome.subject);
+  const [emailBody, setEmailBody] = useState(EMAIL_TEMPLATES.welcome.body);
+  const [emailLeadName, setEmailLeadName] = useState("Lucas García");
+  const [emailPropertyName, setEmailPropertyName] = useState("Lote 45 - Bosques de Canning");
+  const [emailToast, setEmailToast] = useState(false);
+
+  // WhatsApp simulation logs per lead
+  const [selectedChatIndex, setSelectedChatIndex] = useState(0);
+  const [isTyping, setIsTyping] = useState(false);
+  const [chatsData, setChatsData] = useState<{ [key: number]: { time: string; type: "in" | "out" | "sys"; sender: string; message: string }[] }>({
+    0: [
+      { time: "10:15", type: "in", sender: "+54 9 11 4983-2918", message: "Hola, me interesa el lote 42. ¿Tienen financiación?" },
+      { time: "10:15", type: "out", sender: "Respuesta Automática", message: "¡Hola Lucas! Sí, contamos con financiación propia de hasta 48 cuotas fijas en USD. ¿Te gustaría agendar una llamada con un asesor?" },
+      { time: "10:16", type: "sys", sender: "Asignador Geográfico", message: "Lead derivado automáticamente a Asesor Comercial GBA Sur." }
+    ],
+    1: [
+      { time: "10:20", type: "in", sender: "+54 9 341 592-1200", message: "Buenas tardes, quería consultar por la oficina de Zona Centro. ¿Sigue disponible?" },
+      { time: "10:21", type: "out", sender: "Respuesta Automática", message: "¡Hola Valentina! Sí, la Oficina Zona Centro está disponible. Cuenta con 120 m² en una ubicación estratégica. ¿Te gustaría recibir la ficha técnica completa por correo?" }
+    ],
+    2: [
+      { time: "10:22", type: "in", sender: "+54 9 261 384-9021", message: "Hola, busco lotes en preventa." },
+      { time: "10:23", type: "out", sender: "Respuesta Automática", message: "¡Hola Mateo! Contamos con preventas exclusivas en varias zonas. Decime, ¿en qué localidad estás buscando y qué presupuesto tenés pensado?" }
+    ],
+    3: [
+      { time: "10:30", type: "in", sender: "+54 9 11 6733-1122", message: "Hola, vi el Terreno Barrio Histórico pero figura reservado. ¿Hay alguno similar?" },
+      { time: "10:31", type: "out", sender: "Respuesta Automática", message: "¡Hola Sofía! Sí, lamentablemente el lote histórico se reservó ayer. Sin embargo, tenemos una opción excelente a solo 200 metros con características similares. ¿Te interesa?" }
+    ]
+  });
+
+  // Rules Engine State
+  const [rules, setRules] = useState([
+    { id: "r1", name: "Bienvenida Instantánea WhatsApp", trigger: "Nuevo lead en WhatsApp", condition: "Cualquiera", action: "Enviar saludo de bienvenida", active: true },
+    { id: "r2", name: "Asignación Geográfica Lotes", trigger: "Consulta sobre loteo", condition: "Presupuesto > $30,000 USD", action: "Asignar a Asesor GBA Sur", active: true },
+    { id: "r3", name: "Calificación con IA OpenAI", trigger: "Lead de ZonaProp o MercadoLibre", condition: "Tiene teléfono y email", action: "Analizar scoring y notificar", active: true },
+    { id: "r4", name: "Re-engagement 48 hs", trigger: "Lead inactivo 48 horas", condition: "Estado = Contactado", action: "Enviar email con lotes recomendados", active: false }
+  ]);
+  const [newRuleName, setNewRuleName] = useState("");
+  const [newRuleTrigger, setNewRuleTrigger] = useState("Mensaje recibido en WhatsApp");
+  const [newRuleCondition, setNewRuleCondition] = useState("Consulta contiene 'financiación'");
+  const [newRuleAction, setNewRuleAction] = useState("Enviar folleto PDF y planes");
+  const [showRuleToast, setShowRuleToast] = useState(false);
+
+  const handleCreateRule = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRuleName.trim()) return;
+    const newRule = {
+      id: "r" + (rules.length + 1),
+      name: newRuleName,
+      trigger: newRuleTrigger,
+      condition: newRuleCondition,
+      action: newRuleAction,
+      active: true
+    };
+    setRules(prev => [...prev, newRule]);
+    setNewRuleName("");
+    setShowRuleToast(true);
+    setTimeout(() => setShowRuleToast(false), 3000);
+  };
+
+  // Visual Workflows state
+  const [selectedFlowNodeId, setSelectedFlowNodeId] = useState<"trigger" | "ai-scoring" | "decision" | "whatsapp-send" | "email-send" | "db-save">("trigger");
+
+  const FLOW_NODES = {
+    trigger: {
+      name: "Lead Entra (Todos los Canales)",
+      type: "Disparador",
+      desc: "Captura consultas entrantes de WhatsApp, formularios web y portales inmobiliarios líderes.",
+      stats: "Ejecutado: 12,482 veces • Éxito: 100%"
+    },
+    "ai-scoring": {
+      name: "Clasificación con OpenAI API",
+      type: "Acción de Inteligencia",
+      desc: "Procesa el mensaje mediante GPT-4o-mini para inferir el presupuesto, intención de compra y scoring (A/B/C).",
+      stats: "Ejecutado: 12,482 veces • Latencia media: 420ms"
+    },
+    decision: {
+      name: "¿Scoring es Alto? (Clase A)",
+      type: "Filtro Condicional",
+      desc: "Evalúa si el lead tiene un alto perfil de conversión para asignarlo de forma prioritaria.",
+      stats: "Apto (Clase A): 87% • No apto: 13%"
+    },
+    "whatsapp-send": {
+      name: "Enviar WhatsApp de Bienvenida + PDF",
+      type: "Canal WhatsApp",
+      desc: "Envía un mensaje personalizado y el folleto digital correspondiente al lote o propiedad consultada.",
+      stats: "Enviados: 10,859 • Tasa de entrega: 99.8%"
+    },
+    "email-send": {
+      name: "Enviar Correo Alternativo con Catálogo",
+      type: "Canal Email",
+      desc: "Envía un email formal con los detalles de contacto, planes de financiación y catálogo general.",
+      stats: "Enviados: 1,623 • Tasa de apertura: 62%"
+    },
+    "db-save": {
+      name: "Registrar en CRM de Lotes",
+      type: "Acción de Sistema",
+      desc: "Crea el lead en el CRM con el estado correspondiente, asignándolo al especialista geográfico.",
+      stats: "Sincronizado: 12,482 leads • Errores: 0"
+    }
+  };
+
+  // Sync email template values
+  useEffect(() => {
+    const template = EMAIL_TEMPLATES[selectedTemplate];
+    if (template) {
+      setEmailSubject(template.subject.replace("[Propiedad]", emailPropertyName));
+      setEmailBody(template.body.replace("[Nombre]", emailLeadName).replace("[Propiedad]", emailPropertyName));
+    }
+  }, [selectedTemplate, emailLeadName, emailPropertyName]);
 
   // Feature request form states
   const [visitorName, setVisitorName] = useState("");
@@ -349,12 +476,6 @@ export default function AdminDemo() {
   }, [hoveredLotId, selectedLot, lots, activeTab]);
 
   // WhatsApp automation simulation state
-  const [whatsappLogs, setWhatsappLogs] = useState([
-    { time: "10:15", type: "in", sender: "+54 11 3844-2911", message: "Hola, me interesa el lote 42. ¿Tienen financiación?" },
-    { time: "10:15", type: "out", sender: "Respuesta Automática", message: "¡Hola! Sí, contamos con financiación propia de hasta 48 cuotas fijas en USD. ¿Te gustaría agendar una llamada con un asesor?" },
-    { time: "10:16", type: "sys", sender: "Asignador Geográfico", message: "Lead derivado automáticamente a Asesor Comercial GBA Sur." },
-  ]);
-
   const [newMsg, setNewMsg] = useState("");
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -362,27 +483,37 @@ export default function AdminDemo() {
     if (!newMsg.trim()) return;
 
     const timeString = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-    const userLog = { time: timeString, type: "in", sender: "+54 11 8888-9999", message: newMsg };
+    const currentLead = AUTOMATION_MOCK_CONTACTS[selectedChatIndex] || AUTOMATION_MOCK_CONTACTS[0];
+    const userLog = { time: timeString, type: "in" as const, sender: currentLead.phone, message: newMsg };
 
-    setWhatsappLogs((prev) => [...prev, userLog]);
+    setChatsData(prev => ({
+      ...prev,
+      [selectedChatIndex]: [...(prev[selectedChatIndex] || []), userLog]
+    }));
 
+    const messageSent = newMsg;
     setNewMsg("");
+    setIsTyping(true);
 
     // Simulate instant auto-response
     setTimeout(() => {
+      setIsTyping(false);
       const botLog = {
         time: timeString,
-        type: "out",
+        type: "out" as const,
         sender: "Respuesta Automática",
-        message: "¡Recibimos tu consulta! Nuestro sistema lo está derivando al especialista. En breve te contactaremos."
+        message: `¡Hola ${currentLead.name.split(" ")[0]}! Recibimos tu consulta: "${messageSent}". Nuestro asistente virtual IA está procesando los detalles. Un asesor se comunicará en breve.`
       };
       const sysLog = {
         time: timeString,
-        type: "sys",
-        sender: "Scoring Comercial",
-        message: "Nuevo lead calificado con scoring alto (A). Notificación enviada al gestor de clientes."
+        type: "sys" as const,
+        sender: "Calificación de Lead",
+        message: `Lead ${currentLead.name} calificado con Scoring Alto (A). Se ha derivado al Asesor de Guardia.`
       };
-      setWhatsappLogs((prev) => [...prev, botLog, sysLog]);
+      setChatsData(prev => ({
+        ...prev,
+        [selectedChatIndex]: [...(prev[selectedChatIndex] || []), botLog, sysLog]
+      }));
     }, 1200);
   };
 
@@ -466,9 +597,63 @@ export default function AdminDemo() {
               style={{ width: "100%", background: "none", border: "none", textAlign: "left", paddingLeft: "24px", fontSize: "0.95rem" }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-7.6-4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10" />
+                <path d="M12 2a15.3 15.3 0 0 0-4 10 15.3 15.3 0 0 0 4 10" />
+                <path d="M2 12h20" />
               </svg>
               Automatizaciones
+            </button>
+          </li>
+          <li>
+            <button
+              onClick={() => setActiveTab("whatsapp-emails")}
+              className={`admin-nav-item ${activeTab === "whatsapp-emails" ? "active" : ""}`}
+              style={{ width: "100%", background: "none", border: "none", textAlign: "left", paddingLeft: "44px", fontSize: "0.9rem", color: "var(--text-muted)", opacity: activeTab === "whatsapp-emails" ? 1 : 0.8 }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg>
+              Campañas de Email
+            </button>
+          </li>
+          <li>
+            <button
+              onClick={() => setActiveTab("whatsapp-messages")}
+              className={`admin-nav-item ${activeTab === "whatsapp-messages" ? "active" : ""}`}
+              style={{ width: "100%", background: "none", border: "none", textAlign: "left", paddingLeft: "44px", fontSize: "0.9rem", color: "var(--text-muted)", opacity: activeTab === "whatsapp-messages" ? 1 : 0.8 }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-7.6-4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+              </svg>
+              Consola de Mensajes
+            </button>
+          </li>
+          <li>
+            <button
+              onClick={() => setActiveTab("whatsapp-rules")}
+              className={`admin-nav-item ${activeTab === "whatsapp-rules" ? "active" : ""}`}
+              style={{ width: "100%", background: "none", border: "none", textAlign: "left", paddingLeft: "44px", fontSize: "0.9rem", color: "var(--text-muted)", opacity: activeTab === "whatsapp-rules" ? 1 : 0.8 }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+              Reglas del Negocio
+            </button>
+          </li>
+          <li>
+            <button
+              onClick={() => setActiveTab("whatsapp-flow")}
+              className={`admin-nav-item ${activeTab === "whatsapp-flow" ? "active" : ""}`}
+              style={{ width: "100%", background: "none", border: "none", textAlign: "left", paddingLeft: "44px", fontSize: "0.9rem", color: "var(--text-muted)", opacity: activeTab === "whatsapp-flow" ? 1 : 0.8 }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M12 2v20" />
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </svg>
+              Flujos de Trabajo
             </button>
           </li>
           <li>
@@ -501,7 +686,11 @@ export default function AdminDemo() {
             {activeTab === "crm-dashboard" && "Seguimiento de Clientes (Resumen Analítico)"}
             {activeTab === "crm-kanban" && "Embudo y Seguimiento de Ventas"}
             {activeTab === "satellite" && "Trazador de Lotes e Infraestructura Satelital"}
-            {activeTab === "whatsapp" && "Motor de Automatización de Mensajería & WhatsApp"}
+            {activeTab === "whatsapp" && "Resumen y Métricas de Automatizaciones"}
+            {activeTab === "whatsapp-emails" && "Automatización y Campañas de Email"}
+            {activeTab === "whatsapp-messages" && "Consola de Mensajería y WhatsApp en Vivo"}
+            {activeTab === "whatsapp-rules" && "Gestor de Reglas Lógicas y Automatización"}
+            {activeTab === "whatsapp-flow" && "Diagrama de Flujo y Recorrido de Leads"}
             {activeTab === "feature-request" && "Solicitud de Nuevas Funcionalidades"}
           </h1>
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
@@ -1281,14 +1470,14 @@ export default function AdminDemo() {
             </div>
           )}
 
-          {/* TAB 3: WHATSAPP AUTOMATION */}
+          {/* TAB 3: RESUMEN DE AUTOMATIZACIONES */}
           {activeTab === "whatsapp" && (
             <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
               {/* KPI Cards Row */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "20px" }}>
                 <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Mensajes Recibidos</span>
-                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "var(--text-heading)" }}>1,248</span>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Total Automatizado (Mensajes)</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "var(--text-heading)" }}>12,482</span>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "#10b981", fontWeight: "bold" }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none">
                       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
@@ -1297,71 +1486,538 @@ export default function AdminDemo() {
                   </span>
                 </div>
                 <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Consultas Hoy</span>
-                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "var(--secondary)" }}>15</span>
-                  <span style={{ fontSize: "0.75rem", color: "var(--secondary)", fontWeight: "bold" }}>Atendidas de forma automática</span>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Emails Enviados</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "var(--secondary)" }}>3,412</span>
+                  <span style={{ fontSize: "0.75rem", color: "#10b981", fontWeight: "bold" }}>68.4% Tasa de Apertura</span>
                 </div>
                 <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Tiempo de Respuesta</span>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Tiempo de Respuesta AI</span>
                   <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "#10b981" }}>1.2s</span>
-                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Promedio automatizado</span>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Promedio automático 24/7</span>
                 </div>
                 <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Scoring Alto (A/B)</span>
-                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "var(--primary)" }}>87%</span>
-                  <span style={{ fontSize: "0.75rem", color: "#10b981", fontWeight: "bold" }}>Derivados a asesores</span>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Reglas de Negocio</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "var(--primary)" }}>{rules.filter(r => r.active).length} Activas</span>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>De {rules.length} configuradas</span>
                 </div>
               </div>
 
               <div className="contact-grid" style={{ alignItems: "stretch" }}>
-                {/* Left Column: Rules Info */}
-                <div className="glass-card" style={{ padding: "24px", display: "flex", flexDirection: "column", justifyContent: "space-between", height: "450px" }}>
+                {/* Left: Estado de Integración de la Infraestructura */}
+                <div className="glass-card" style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
                   <div>
-                    <h3 style={{ marginBottom: "12px", fontSize: "1.45rem", fontFamily: "var(--font-title)", fontWeight: 400, color: "var(--text-heading)" }}>Respuestas Automatizadas</h3>
-                    <p style={{ fontSize: "0.95rem", marginBottom: "20px" }}>
-                      El motor intercepta consultas de portales inmobiliarios (ZonaProp, Argenprop, MercadoLibre) y WhatsApp, procesando respuestas automáticas al instante para evitar que el lead se enfríe.
-                    </p>
-
-                    <div style={{ display: "flex", flexDirection: "column", gap: "12px", borderTop: "1px solid var(--border-color)", paddingTop: "16px" }}>
-                      <p style={{ fontSize: "0.85rem", color: "var(--text-heading)" }}><strong>Reglas Activas en tu base tecnológica:</strong></p>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "0.8rem", color: "var(--text-main)" }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#25d366" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                        Respuestas WhatsApp automáticas 24/7.
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "0.8rem", color: "var(--text-main)" }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#25d366" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                        Derivación de leads basado en código postal y presupuesto.
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "0.8rem", color: "var(--text-main)" }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#25d366" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                        Scoring comercial automático utilizando OpenAI API.
-                      </div>
-                    </div>
+                    <h3 style={{ marginBottom: "6px", fontSize: "1.45rem", fontFamily: "var(--font-title)", fontWeight: 400, color: "var(--text-heading)" }}>Estado del Motor de Automatización</h3>
+                    <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Infraestructura tecnológica activa para tu marca.</p>
                   </div>
 
-                  <div style={{ background: "var(--bg-column)", border: "1px solid var(--border-color)", borderRadius: "8px", padding: "16px", marginTop: "16px" }}>
-                    <p style={{ fontSize: "0.85rem", color: "var(--text-main)", margin: 0, display: "flex", alignItems: "center", gap: "6px" }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                        <path d="M12 2v4" />
-                        <path d="M8 5h8" />
-                        <line x1="8" y1="15" x2="8.01" y2="15" />
-                        <line x1="16" y1="15" x2="16.01" y2="16.01" />
-                      </svg>
-                      El sistema procesa consultas en tiempo real y califica de forma automática el perfil del cliente para registrarlo en el Seguimiento.
-                    </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    <div style={{ display: "flex", alignItems: "center", padding: "12px", background: "var(--bg-column)", borderRadius: "8px", border: "1px solid var(--border-color)", justifyContent: "space-between" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <span className="pulse-green" style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981", display: "inline-block" }}></span>
+                        <div>
+                          <p style={{ fontSize: "0.85rem", fontWeight: "bold", margin: 0, color: "var(--text-heading)" }}>WhatsApp Gateway API</p>
+                          <p style={{ fontSize: "0.75rem", margin: 0, color: "var(--text-muted)" }}>WhatsApp Cloud API Oficial</p>
+                        </div>
+                      </div>
+                      <span className="badge" style={{ background: "rgba(16,185,129,0.12)", color: "#10b981", fontSize: "0.7rem", padding: "4px 8px", borderRadius: "4px" }}>ONLINE</span>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", padding: "12px", background: "var(--bg-column)", borderRadius: "8px", border: "1px solid var(--border-color)", justifyContent: "space-between" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <span className="pulse-green" style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981", display: "inline-block" }}></span>
+                        <div>
+                          <p style={{ fontSize: "0.85rem", fontWeight: "bold", margin: 0, color: "var(--text-heading)" }}>SMTP Server (Mailing)</p>
+                          <p style={{ fontSize: "0.75rem", margin: 0, color: "var(--text-muted)" }}>Amazon SES (Dominios Verificados)</p>
+                        </div>
+                      </div>
+                      <span className="badge" style={{ background: "rgba(16,185,129,0.12)", color: "#10b981", fontSize: "0.7rem", padding: "4px 8px", borderRadius: "4px" }}>ONLINE</span>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", padding: "12px", background: "var(--bg-column)", borderRadius: "8px", border: "1px solid var(--border-color)", justifyContent: "space-between" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <span className="pulse-green" style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981", display: "inline-block" }}></span>
+                        <div>
+                          <p style={{ fontSize: "0.85rem", fontWeight: "bold", margin: 0, color: "var(--text-heading)" }}>Motor IA de Calificación</p>
+                          <p style={{ fontSize: "0.75rem", margin: 0, color: "var(--text-muted)" }}>OpenAI API (GPT-4o-mini)</p>
+                        </div>
+                      </div>
+                      <span className="badge" style={{ background: "rgba(16,185,129,0.12)", color: "#10b981", fontSize: "0.7rem", padding: "4px 8px", borderRadius: "4px" }}>ONLINE</span>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", padding: "12px", background: "var(--bg-column)", borderRadius: "8px", border: "1px solid var(--border-color)", justifyContent: "space-between" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <span className="pulse-green" style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981", display: "inline-block" }}></span>
+                        <div>
+                          <p style={{ fontSize: "0.85rem", fontWeight: "bold", margin: 0, color: "var(--text-heading)" }}>Webhook Portal Listeners</p>
+                          <p style={{ fontSize: "0.75rem", margin: 0, color: "var(--text-muted)" }}>Escuchando ZonaProp, ML, ArgenProp</p>
+                        </div>
+                      </div>
+                      <span className="badge" style={{ background: "rgba(16,185,129,0.12)", color: "#10b981", fontSize: "0.7rem", padding: "4px 8px", borderRadius: "4px" }}>ONLINE</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Right Column: Chat simulator */}
-                <div className="glass-card" style={{ padding: "24px", display: "flex", flexDirection: "column", height: "450px" }}>
-                  <h4 style={{ color: "var(--text-heading)", marginBottom: "16px", fontSize: "1.25rem", fontFamily: "var(--font-title)", fontWeight: 400 }}>Consola de Respuestas Automáticas</h4>
+                {/* Right: Registro Histórico Reciente */}
+                <div className="glass-card" style={{ padding: "24px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                  <div>
+                    <h3 style={{ marginBottom: "12px", fontSize: "1.45rem", fontFamily: "var(--font-title)", fontWeight: 400, color: "var(--text-heading)" }}>Historial de Eventos Recientes</h3>
+                    <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "16px" }}>Registro en tiempo real de disparadores y acciones.</p>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", flexGrow: 1, overflowY: "auto", maxHeight: "300px" }}>
+                    <div style={{ padding: "10px", borderBottom: "1px solid var(--border-color)", display: "flex", gap: "10px", alignItems: "flex-start", fontSize: "0.8rem" }}>
+                      <span style={{ color: "#25d366", fontWeight: "bold" }}>[WhatsApp]</span>
+                      <div style={{ flexGrow: 1 }}>
+                        <p style={{ margin: 0, color: "var(--text-heading)" }}>Mensaje automático enviado a <strong>Lucas García</strong></p>
+                        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.75rem" }}>Consulta por Lote 42 • Código: EN-BIENVENIDA</p>
+                      </div>
+                      <span style={{ color: "var(--text-muted)" }}>Hace 2m</span>
+                    </div>
+                    <div style={{ padding: "10px", borderBottom: "1px solid var(--border-color)", display: "flex", gap: "10px", alignItems: "flex-start", fontSize: "0.8rem" }}>
+                      <span style={{ color: "#3b82f6", fontWeight: "bold" }}>[Email]</span>
+                      <div style={{ flexGrow: 1 }}>
+                        <p style={{ margin: 0, color: "var(--text-heading)" }}>Dossier Comercial y Financiación enviado a <strong>Valentina Rossi</strong></p>
+                        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.75rem" }}>Consulta por Oficina Centro • Plantilla: Ficha Técnica</p>
+                      </div>
+                      <span style={{ color: "var(--text-muted)" }}>Hace 5m</span>
+                    </div>
+                    <div style={{ padding: "10px", borderBottom: "1px solid var(--border-color)", display: "flex", gap: "10px", alignItems: "flex-start", fontSize: "0.8rem" }}>
+                      <span style={{ color: "#a855f7", fontWeight: "bold" }}>[AI Engine]</span>
+                      <div style={{ flexGrow: 1 }}>
+                        <p style={{ margin: 0, color: "var(--text-heading)" }}>Lead <strong>Mateo Fernández</strong> calificado</p>
+                        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.75rem" }}>Scoring: A (Interés Muy Alto) • Notificado Asesor Mendoza</p>
+                      </div>
+                      <span style={{ color: "var(--text-muted)" }}>Hace 12m</span>
+                    </div>
+                    <div style={{ padding: "10px", borderBottom: "1px solid var(--border-color)", display: "flex", gap: "10px", alignItems: "flex-start", fontSize: "0.8rem" }}>
+                      <span style={{ color: "#f59e0b", fontWeight: "bold" }}>[Regla]</span>
+                      <div style={{ flexGrow: 1 }}>
+                        <p style={{ margin: 0, color: "var(--text-heading)" }}>Disparador <strong>Asignación por Zona</strong> ejecutado</p>
+                        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.75rem" }}>Lead Sofía Silva derivado a Especialista de Lomas de Chacras</p>
+                      </div>
+                      <span style={{ color: "var(--text-muted)" }}>Hace 18m</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Acceso Rápido a Módulos */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "20px", marginTop: "12px" }}>
+                <div 
+                  className="glass-card hover-scale" 
+                  onClick={() => setActiveTab("whatsapp-emails")}
+                  style={{ padding: "20px", cursor: "pointer", display: "flex", flexDirection: "column", gap: "10px", transition: "all 0.3s ease" }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div style={{ background: "rgba(59, 130, 246, 0.15)", padding: "10px", borderRadius: "8px" }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                        <polyline points="22,6 12,13 2,6" />
+                      </svg>
+                    </div>
+                    <h4 style={{ margin: 0, color: "var(--text-heading)", fontSize: "1rem" }}>Campañas de Email</h4>
+                  </div>
+                  <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: 0 }}>Crea, edita y previsualiza plantillas automatizadas con envío dinámico de PDFs comerciales.</p>
+                  <span style={{ fontSize: "0.75rem", color: "#3b82f6", fontWeight: "bold", marginTop: "auto", display: "flex", alignItems: "center", gap: "4px" }}>
+                    Entrar al módulo 
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                  </span>
+                </div>
+
+                <div 
+                  className="glass-card hover-scale" 
+                  onClick={() => setActiveTab("whatsapp-messages")}
+                  style={{ padding: "20px", cursor: "pointer", display: "flex", flexDirection: "column", gap: "10px", transition: "all 0.3s ease" }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div style={{ background: "rgba(37, 211, 102, 0.15)", padding: "10px", borderRadius: "8px" }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#25d366" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-7.6-4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                      </svg>
+                    </div>
+                    <h4 style={{ margin: 0, color: "var(--text-heading)", fontSize: "1rem" }}>Consola de Mensajes</h4>
+                  </div>
+                  <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: 0 }}>Simulador en vivo de chat. Interactúa con leads y observa la velocidad de respuesta de la IA.</p>
+                  <span style={{ fontSize: "0.75rem", color: "#25d366", fontWeight: "bold", marginTop: "auto", display: "flex", alignItems: "center", gap: "4px" }}>
+                    Simular chat
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                  </span>
+                </div>
+
+                <div 
+                  className="glass-card hover-scale" 
+                  onClick={() => setActiveTab("whatsapp-rules")}
+                  style={{ padding: "20px", cursor: "pointer", display: "flex", flexDirection: "column", gap: "10px", transition: "all 0.3s ease" }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div style={{ background: "rgba(245, 158, 11, 0.15)", padding: "10px", borderRadius: "8px" }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                      </svg>
+                    </div>
+                    <h4 style={{ margin: 0, color: "var(--text-heading)", fontSize: "1rem" }}>Reglas del Negocio</h4>
+                  </div>
+                  <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: 0 }}>Define y edita disparadores (triggers) y acciones automatizadas sin programar.</p>
+                  <span style={{ fontSize: "0.75rem", color: "#f59e0b", fontWeight: "bold", marginTop: "auto", display: "flex", alignItems: "center", gap: "4px" }}>
+                    Gestionar reglas
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                  </span>
+                </div>
+
+                <div 
+                  className="glass-card hover-scale" 
+                  onClick={() => setActiveTab("whatsapp-flow")}
+                  style={{ padding: "20px", cursor: "pointer", display: "flex", flexDirection: "column", gap: "10px", transition: "all 0.3s ease" }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div style={{ background: "rgba(168, 85, 247, 0.15)", padding: "10px", borderRadius: "8px" }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 2v20" />
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                      </svg>
+                    </div>
+                    <h4 style={{ margin: 0, color: "var(--text-heading)", fontSize: "1rem" }}>Flujos de Trabajo</h4>
+                  </div>
+                  <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: 0 }}>Visualiza y configura la ruta completa de un prospecto desde que llega hasta que compra.</p>
+                  <span style={{ fontSize: "0.75rem", color: "#a855f7", fontWeight: "bold", marginTop: "auto", display: "flex", alignItems: "center", gap: "4px" }}>
+                    Ver diagrama de flujos
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3A: AUTOMATIZACION DE EMAILS */}
+          {activeTab === "whatsapp-emails" && (
+            <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+              {/* KPIs Row */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "20px" }}>
+                <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Mails Enviados</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "var(--text-heading)" }}>3,412</span>
+                </div>
+                <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Tasa de Apertura</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "#10b981" }}>68.4%</span>
+                </div>
+                <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Tasa de Clicks</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "var(--primary)" }}>24.1%</span>
+                </div>
+                <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Rebotados (Bounce)</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "#ef4444" }}>0.1%</span>
+                </div>
+              </div>
+
+              <div className="contact-grid" style={{ alignItems: "stretch" }}>
+                {/* Left: Template Selector & Settings */}
+                <div className="glass-card" style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
+                  <div>
+                    <h3 style={{ marginBottom: "6px", fontSize: "1.25rem", fontFamily: "var(--font-title)", fontWeight: 400, color: "var(--text-heading)" }}>Plantillas del Sistema</h3>
+                    <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Selecciona una plantilla para editar o previsualizar.</p>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {[
+                      { id: "welcome", name: "Bienvenida a Nuevo Lead", desc: "Se envía automáticamente al registrar un lead." },
+                      { id: "ficha", name: "Envío de Ficha Técnica", desc: "Se activa al solicitar información de financiamiento." },
+                      { id: "reunion", name: "Confirmación de Reunión", desc: "Reserva de fecha y asignación de geolocalización." }
+                    ].map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => setSelectedTemplate(t.id as any)}
+                        style={{
+                          textAlign: "left",
+                          padding: "12px",
+                          borderRadius: "8px",
+                          border: "1px solid " + (selectedTemplate === t.id ? "var(--primary)" : "var(--border-color)"),
+                          background: selectedTemplate === t.id ? "rgba(59, 130, 246, 0.08)" : "var(--bg-column)",
+                          cursor: "pointer",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "4px",
+                          width: "100%"
+                        }}
+                      >
+                        <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: selectedTemplate === t.id ? "var(--primary)" : "var(--text-heading)" }}>{t.name}</span>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{t.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <hr style={{ border: "none", borderTop: "1px solid var(--border-color)", margin: "10px 0" }} />
+
+                  {/* Variables Form */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <h4 style={{ fontSize: "0.9rem", color: "var(--text-heading)", margin: 0 }}>Simular Variables Dinámicas</h4>
+                    <div>
+                      <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>Nombre del Cliente [Nombre]</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={emailLeadName} 
+                        onChange={(e) => setEmailLeadName(e.target.value)} 
+                        style={{ padding: "8px", fontSize: "0.8rem", width: "100%" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>Propiedad / Lote [Propiedad]</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={emailPropertyName} 
+                        onChange={(e) => setEmailPropertyName(e.target.value)} 
+                        style={{ padding: "8px", fontSize: "0.8rem", width: "100%" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: Email visual preview / editor */}
+                <div className="glass-card" style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "16px", minHeight: "500px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h3 style={{ margin: 0, fontSize: "1.25rem", fontFamily: "var(--font-title)", fontWeight: 400, color: "var(--text-heading)" }}>Previsualización del Correo</h3>
+                    <button 
+                      onClick={() => {
+                        setEmailToast(true);
+                        setTimeout(() => setEmailToast(false), 3000);
+                      }}
+                      className="btn btn-primary" 
+                      style={{ fontSize: "0.8rem", padding: "8px 16px" }}
+                    >
+                      Enviar Prueba
+                    </button>
+                  </div>
+
+                  {emailToast && (
+                    <div style={{ 
+                      background: "rgba(16, 185, 129, 0.15)", 
+                      color: "#10b981", 
+                      border: "1px solid rgba(16, 185, 129, 0.3)", 
+                      borderRadius: "6px", 
+                      padding: "10px 14px", 
+                      fontSize: "0.8rem", 
+                      display: "flex", 
+                      alignItems: "center", 
+                      gap: "8px",
+                      animation: "fadeIn 0.3s ease" 
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      ¡Email de prueba enviado con éxito a {emailLeadName}!
+                    </div>
+                  )}
+
+                  {/* Simulated Email Client */}
+                  <div style={{ 
+                    flexGrow: 1, 
+                    border: "1px solid var(--border-color)", 
+                    borderRadius: "8px", 
+                    overflow: "hidden", 
+                    background: theme === "light" ? "#f3f4f6" : "#0f172a",
+                    display: "flex",
+                    flexDirection: "column"
+                  }}>
+                    {/* Header */}
+                    <div style={{ padding: "12px 16px", background: "var(--bg-column)", borderBottom: "1px solid var(--border-color)", fontSize: "0.75rem", color: "var(--text-muted)", display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <div><strong style={{ color: "var(--text-heading)" }}>De:</strong> no-reply@n-sistemas.com (Automatizaciones)</div>
+                      <div><strong style={{ color: "var(--text-heading)" }}>Para:</strong> {emailLeadName.toLowerCase().replace(" ", ".")}@ejemplo.com</div>
+                      <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                        <strong style={{ color: "var(--text-heading)" }}>Asunto:</strong>
+                        <input 
+                          type="text" 
+                          value={emailSubject}
+                          onChange={(e) => setEmailSubject(e.target.value)}
+                          style={{ background: "none", border: "none", color: "var(--text-heading)", fontWeight: "bold", width: "100%", fontSize: "0.75rem", outline: "none" }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Body Preview */}
+                    <div style={{ 
+                      padding: "24px", 
+                      background: theme === "light" ? "#ffffff" : "#1e293b", 
+                      color: theme === "light" ? "#374151" : "#e2e8f0", 
+                      fontSize: "0.85rem", 
+                      fontFamily: "var(--font-sans), sans-serif", 
+                      lineHeight: "1.5", 
+                      flexGrow: 1, 
+                      overflowY: "auto",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "16px"
+                    }}>
+                      {/* Email Brand Container */}
+                      <div style={{ textAlign: "center", borderBottom: "1px solid var(--border-color)", paddingBottom: "16px" }}>
+                        <span style={{ fontSize: "1.2rem", fontWeight: "bold", color: "var(--primary)", letterSpacing: "-0.02em" }}>n-sistemas</span>
+                      </div>
+
+                      {/* Content (Text Area) */}
+                      <textarea
+                        value={emailBody}
+                        onChange={(e) => setEmailBody(e.target.value)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "inherit",
+                          width: "100%",
+                          height: "180px",
+                          resize: "none",
+                          fontFamily: "inherit",
+                          fontSize: "inherit",
+                          lineHeight: "inherit",
+                          outline: "none",
+                          padding: 0
+                        }}
+                      />
+
+                      {/* Call to Action Button */}
+                      <div style={{ textAlign: "center", marginTop: "12px" }}>
+                        <a href="#" onClick={(e) => e.preventDefault()} style={{ 
+                          display: "inline-block", 
+                          background: "var(--primary)", 
+                          color: "#ffffff", 
+                          padding: "10px 24px", 
+                          borderRadius: "6px", 
+                          textDecoration: "none", 
+                          fontWeight: "bold",
+                          fontSize: "0.8rem",
+                          boxShadow: "0 4px 6px -1px rgba(59, 130, 246, 0.4)"
+                        }}>
+                          Ver {emailPropertyName} y Financiación
+                        </a>
+                      </div>
+
+                      {/* Footer */}
+                      <div style={{ marginTop: "auto", borderTop: "1px solid var(--border-color)", paddingTop: "16px", textAlign: "center", fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                        Recibiste este correo porque realizaste una consulta técnica.
+                        <br />© 2026 n-sistemas S.A. Todos los derechos reservados.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3B: CONSOLA DE MENSAJES (WHATSAPP SIMULATOR) */}
+          {activeTab === "whatsapp-messages" && (
+            <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+              {/* KPIs Row */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "20px" }}>
+                <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Mensajes de WhatsApp</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "#10b981" }}>12,482</span>
+                </div>
+                <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>SMS de Respaldo</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "var(--text-heading)" }}>152</span>
+                </div>
+                <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Tasa de Respuesta</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "var(--primary)" }}>98.6%</span>
+                </div>
+                <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Asistente AI</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "var(--secondary)" }}>Activo</span>
+                </div>
+              </div>
+
+              {/* Chat Interface Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "24px", height: "550px" }} className="contact-grid">
+                {/* Chat Left Panel: Leads list */}
+                <div className="glass-card" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px", overflowY: "auto" }}>
+                  <h4 style={{ margin: 0, fontSize: "1.1rem", color: "var(--text-heading)" }}>Conversaciones Recientes</h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {AUTOMATION_MOCK_CONTACTS.slice(0, 4).map((contact, idx) => {
+                      const isActive = selectedChatIndex === idx;
+                      const logs = chatsData[idx] || [];
+                      const lastLog = logs[logs.length - 1];
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => setSelectedChatIndex(idx)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "12px",
+                            padding: "12px",
+                            borderRadius: "8px",
+                            background: isActive ? "rgba(37, 211, 102, 0.08)" : "var(--bg-column)",
+                            border: "1px solid " + (isActive ? "#25d366" : "var(--border-color)"),
+                            cursor: "pointer",
+                            transition: "all 0.2s ease"
+                          }}
+                        >
+                          <div style={{ 
+                            width: "36px", 
+                            height: "36px", 
+                            borderRadius: "50%", 
+                            background: isActive ? "#25d366" : "var(--border-color)", 
+                            color: isActive ? "#ffffff" : "var(--text-heading)",
+                            display: "flex", 
+                            alignItems: "center", 
+                            justifyContent: "center",
+                            fontWeight: "bold",
+                            fontSize: "0.9rem"
+                          }}>
+                            {contact.name.split(" ").map(n => n[0]).join("")}
+                          </div>
+                          <div style={{ flexGrow: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "var(--text-heading)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{contact.name}</span>
+                              <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>{contact.time}</span>
+                            </div>
+                            <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                              {lastLog ? lastLog.message : "Sin mensajes"}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Chat Right Panel: Simulated WhatsApp Screen */}
+                <div className="glass-card" style={{ padding: "0", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                  {/* WhatsApp Header */}
+                  <div style={{ 
+                    padding: "14px 20px", 
+                    background: theme === "light" ? "#075e54" : "#1f2937", 
+                    color: "#ffffff",
+                    display: "flex", 
+                    alignItems: "center", 
+                    justifyContent: "space-between" 
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <div style={{ 
+                        width: "36px", 
+                        height: "36px", 
+                        borderRadius: "50%", 
+                        background: "rgba(255, 255, 255, 0.2)", 
+                        display: "flex", 
+                        alignItems: "center", 
+                        justifyContent: "center",
+                        fontWeight: "bold",
+                        color: "#ffffff"
+                      }}>
+                        {(AUTOMATION_MOCK_CONTACTS[selectedChatIndex] || AUTOMATION_MOCK_CONTACTS[0]).name.split(" ").map(n => n[0]).join("")}
+                      </div>
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: "0.95rem", color: "#ffffff", fontWeight: "bold" }}>
+                          {(AUTOMATION_MOCK_CONTACTS[selectedChatIndex] || AUTOMATION_MOCK_CONTACTS[0]).name}
+                        </h4>
+                        <span style={{ fontSize: "0.7rem", opacity: 0.85 }}>En línea (Simulación)</span>
+                      </div>
+                    </div>
+                    {/* Status badge */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "rgba(255,255,255,0.15)", padding: "4px 10px", borderRadius: "20px", fontSize: "0.7rem" }}>
+                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#25d366" }}></span>
+                      WhatsApp Activo
+                    </div>
+                  </div>
 
                   {/* Logs Screen */}
                   <div
@@ -1371,66 +2027,558 @@ export default function AdminDemo() {
                       display: "flex",
                       flexDirection: "column",
                       gap: "12px",
-                      padding: "16px",
-                      background: "var(--bg-column)",
-                      borderRadius: "8px",
-                      border: "1px solid var(--border-color)",
-                      marginBottom: "16px"
+                      padding: "20px",
+                      background: theme === "light" ? "#efeae2" : "var(--bg-column)",
+                      backgroundImage: theme === "light" ? "url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')" : "none",
+                      backgroundRepeat: "repeat",
+                      minHeight: "250px"
                     }}
                   >
-                    {whatsappLogs.map((log, idx) => (
+                    {(chatsData[selectedChatIndex] || []).map((log, idx) => (
                       <div
                         key={idx}
                         style={{
                           alignSelf: log.type === "in" ? "flex-end" : log.type === "out" ? "flex-start" : "center",
-                          maxWidth: log.type === "sys" ? "100%" : "85%",
+                          maxWidth: log.type === "sys" ? "90%" : "75%",
                           background:
                             log.type === "in"
-                              ? "rgba(59, 130, 246, 0.12)"
+                              ? (theme === "light" ? "#d9fdd3" : "rgba(37, 211, 102, 0.12)")
                               : log.type === "out"
-                              ? "rgba(37, 211, 102, 0.08)"
+                              ? (theme === "light" ? "#ffffff" : "rgba(59, 130, 246, 0.08)")
                               : "var(--bg-column)",
                           border:
                             log.type === "in"
-                              ? "1px solid rgba(59, 130, 246, 0.25)"
+                              ? (theme === "light" ? "#c2ebd9" : "1px solid rgba(37, 211, 102, 0.25)")
                               : log.type === "out"
-                              ? "1px solid rgba(37, 211, 102, 0.2)"
+                              ? (theme === "light" ? "#e2e8f0" : "1px solid rgba(59, 130, 246, 0.2)")
                               : "1px solid var(--border-color)",
-                          borderRadius: "8px",
+                          boxShadow: "0 1px 1px rgba(0,0,0,0.05)",
+                          borderRadius: log.type === "sys" ? "6px" : (log.type === "in" ? "8px 0px 8px 8px" : "0px 8px 8px 8px"),
                           padding: "8px 12px",
                           fontSize: "0.8rem",
-                          color: log.type === "sys" ? "var(--text-muted)" : "var(--text-heading)"
+                          color: log.type === "sys" ? "var(--text-muted)" : (theme === "light" ? "#1f2937" : "var(--text-heading)")
                         }}
                       >
-                        <div
-                          style={{
-                            fontWeight: "700",
-                            color: log.type === "in" ? "var(--primary)" : log.type === "out" ? (theme === "light" ? "#16a34a" : "#25d366") : (theme === "light" ? "#d97706" : "#f59e0b"),
-                            fontSize: "0.7rem",
-                            marginBottom: "4px"
-                          }}
-                        >
-                          {log.sender} • {log.time}
-                        </div>
+                        {log.type !== "sys" && (
+                          <div
+                            style={{
+                              fontWeight: "700",
+                              color: log.type === "in" ? "#16a34a" : "var(--primary)",
+                              fontSize: "0.7rem",
+                              marginBottom: "4px"
+                            }}
+                          >
+                            {log.type === "in" ? "Lead" : "Asistente AI"} • {log.time}
+                          </div>
+                        )}
+                        {log.type === "sys" && (
+                          <div style={{ fontSize: "0.75rem", fontWeight: "bold", color: "#f59e0b", marginBottom: "2px" }}>
+                            ⚙️ SISTEMA: {log.sender}
+                          </div>
+                        )}
                         <div>{log.message}</div>
                       </div>
                     ))}
+
+                    {/* Typing Indicator */}
+                    {isTyping && (
+                      <div style={{
+                        alignSelf: "flex-start",
+                        background: theme === "light" ? "#ffffff" : "rgba(59, 130, 246, 0.08)",
+                        border: "1px solid var(--border-color)",
+                        borderRadius: "0px 8px 8px 8px",
+                        padding: "10px 14px",
+                        fontSize: "0.8rem",
+                        color: "var(--text-muted)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px"
+                      }}>
+                        <span style={{ fontSize: "0.75rem", fontWeight: "bold", color: "var(--primary)" }}>IA respondiendo</span>
+                        <div style={{ display: "flex", gap: "2px" }}>
+                          <span className="dot-pulse" style={{ width: "4px", height: "4px", borderRadius: "50%", background: "var(--text-muted)", display: "inline-block" }}></span>
+                          <span className="dot-pulse" style={{ width: "4px", height: "4px", borderRadius: "50%", background: "var(--text-muted)", display: "inline-block", animationDelay: "0.2s" }}></span>
+                          <span className="dot-pulse" style={{ width: "4px", height: "4px", borderRadius: "50%", background: "var(--text-muted)", display: "inline-block", animationDelay: "0.4s" }}></span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Form Input */}
-                  <form onSubmit={handleSendMessage} style={{ display: "flex", gap: "8px" }}>
+                  <form onSubmit={handleSendMessage} style={{ display: "flex", gap: "8px", padding: "16px", background: "var(--bg-column)", borderTop: "1px solid var(--border-color)" }}>
                     <input
                       type="text"
                       value={newMsg}
                       onChange={(e) => setNewMsg(e.target.value)}
-                      placeholder="Simula un mensaje de un lead de WhatsApp..."
+                      placeholder={`Escribe una consulta simulada para ${(AUTOMATION_MOCK_CONTACTS[selectedChatIndex] || AUTOMATION_MOCK_CONTACTS[0]).name.split(" ")[0]}...`}
                       className="form-control"
-                      style={{ flexGrow: 1, padding: "10px", fontSize: "0.85rem" }}
+                      style={{ flexGrow: 1, padding: "10px 14px", fontSize: "0.85rem" }}
                     />
-                    <button type="submit" className="btn btn-primary" style={{ padding: "10px 20px", fontSize: "0.85rem" }}>
+                    <button type="submit" className="btn btn-primary" style={{ padding: "10px 24px", fontSize: "0.85rem", background: "#25d366", borderColor: "#25d366" }}>
                       Enviar
                     </button>
                   </form>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3C: REGLAS DEL NEGOCIO (RULES ENGINE) */}
+          {activeTab === "whatsapp-rules" && (
+            <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+              {/* KPIs Row */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "20px" }}>
+                <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Reglas Activas</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "var(--text-heading)" }}>{rules.filter(r => r.active).length} / {rules.length}</span>
+                </div>
+                <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Disparadores Totales</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "#10b981" }}>320 / día</span>
+                </div>
+                <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Acciones Ejecutadas</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "var(--primary)" }}>489 / día</span>
+                </div>
+                <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Tasa de Acierto AI</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "var(--secondary)" }}>99.2%</span>
+                </div>
+              </div>
+
+              <div className="contact-grid" style={{ alignItems: "stretch" }}>
+                {/* Left: Active rules manager */}
+                <div className="glass-card" style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div>
+                    <h3 style={{ marginBottom: "6px", fontSize: "1.25rem", fontFamily: "var(--font-title)", fontWeight: 400, color: "var(--text-heading)" }}>Reglas Operativas Activas</h3>
+                    <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Controla qué acciones automáticas ocurren ante eventos del cliente.</p>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                    {rules.map(rule => (
+                      <div
+                        key={rule.id}
+                        style={{
+                          padding: "16px",
+                          borderRadius: "8px",
+                          background: "var(--bg-column)",
+                          border: "1px solid var(--border-color)",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          gap: "12px"
+                        }}
+                      >
+                        <div style={{ flexGrow: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
+                            <span style={{ 
+                              width: "8px", 
+                              height: "8px", 
+                              borderRadius: "50%", 
+                              background: rule.active ? "#10b981" : "var(--text-muted)" 
+                            }}></span>
+                            <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "var(--text-heading)" }}>{rule.name}</span>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize: "0.75rem", color: "var(--text-muted)", paddingLeft: "18px" }}>
+                            <div><strong>Disparador:</strong> {rule.trigger}</div>
+                            <div><strong>Condición:</strong> {rule.condition}</div>
+                            <div><strong>Acción:</strong> {rule.action}</div>
+                          </div>
+                        </div>
+
+                        {/* Switch button */}
+                        <button
+                          onClick={() => {
+                            setRules(prev => prev.map(r => r.id === rule.id ? { ...r, active: !r.active } : r));
+                          }}
+                          style={{
+                            background: rule.active ? "var(--primary)" : "rgba(107, 114, 128, 0.2)",
+                            border: "none",
+                            width: "36px",
+                            height: "20px",
+                            borderRadius: "10px",
+                            position: "relative",
+                            cursor: "pointer",
+                            transition: "all 0.3s ease",
+                            flexShrink: 0
+                          }}
+                        >
+                          <span style={{
+                            width: "14px",
+                            height: "14px",
+                            background: "#ffffff",
+                            borderRadius: "50%",
+                            position: "absolute",
+                            top: "3px",
+                            left: rule.active ? "19px" : "3px",
+                            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+                          }}></span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right: Dynamic Rule Builder */}
+                <div className="glass-card" style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <h3 style={{ margin: 0, fontSize: "1.25rem", fontFamily: "var(--font-title)", fontWeight: 400, color: "var(--text-heading)" }}>Crear Nueva Regla</h3>
+                  
+                  {showRuleToast && (
+                    <div style={{ 
+                      background: "rgba(16, 185, 129, 0.15)", 
+                      color: "#10b981", 
+                      border: "1px solid rgba(16, 185, 129, 0.3)", 
+                      borderRadius: "6px", 
+                      padding: "10px 14px", 
+                      fontSize: "0.8rem", 
+                      display: "flex", 
+                      alignItems: "center", 
+                      gap: "8px",
+                      animation: "fadeIn 0.3s ease" 
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      ¡Nueva regla creada y activada correctamente!
+                    </div>
+                  )}
+
+                  <form onSubmit={handleCreateRule} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    <div>
+                      <label style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>Nombre de la Regla</label>
+                      <input 
+                        type="text" 
+                        placeholder="Ej. Notificar Lead de Alto Presupuesto" 
+                        className="form-control" 
+                        value={newRuleName} 
+                        onChange={(e) => setNewRuleName(e.target.value)} 
+                        style={{ padding: "10px", fontSize: "0.85rem", width: "100%" }}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>Si ocurre este evento (Disparador)</label>
+                      <select 
+                        className="form-control" 
+                        value={newRuleTrigger} 
+                        onChange={(e) => setNewRuleTrigger(e.target.value)}
+                        style={{ padding: "10px", fontSize: "0.85rem", width: "100%", background: "var(--bg-column)" }}
+                      >
+                        <option value="Mensaje recibido en WhatsApp">Mensaje recibido en WhatsApp</option>
+                        <option value="Nuevo lead registrado en Web">Nuevo lead registrado en Web</option>
+                        <option value="Lead ingresado de ZonaProp">Lead ingresado de ZonaProp</option>
+                        <option value="Lead ingresado de MercadoLibre">Lead ingresado de MercadoLibre</option>
+                        <option value="Lote marcado como Reservado en satélite">Lote marcado como Reservado en satélite</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>Y se cumple esta condición (Filtro)</label>
+                      <select 
+                        className="form-control" 
+                        value={newRuleCondition} 
+                        onChange={(e) => setNewRuleCondition(e.target.value)}
+                        style={{ padding: "10px", fontSize: "0.85rem", width: "100%", background: "var(--bg-column)" }}
+                      >
+                        <option value="Consulta contiene 'financiación'">Consulta contiene "financiación"</option>
+                        <option value="Presupuesto > $50,000 USD">Presupuesto superior a $50,000 USD</option>
+                        <option value="Código postal corresponde a Buenos Aires">Código postal es de Buenos Aires</option>
+                        <option value="Es fuera de horario laboral (20:00 - 08:00)">Fuera de horario laboral</option>
+                        <option value="Cualquier condición / Sin restricciones">Cualquiera</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>Entonces ejecutar esta acción (Consecuencia)</label>
+                      <select 
+                        className="form-control" 
+                        value={newRuleAction} 
+                        onChange={(e) => setNewRuleAction(e.target.value)}
+                        style={{ padding: "10px", fontSize: "0.85rem", width: "100%", background: "var(--bg-column)" }}
+                      >
+                        <option value="Enviar folleto PDF y planes">Enviar WhatsApp con Folleto Técnico (PDF)</option>
+                        <option value="Enviar email con Ficha Informativa">Enviar Email con Ficha del Lote</option>
+                        <option value="Asignar al Asesor de Guardia">Asignar lead al Asesor de Guardia</option>
+                        <option value="Calificar Scoring comercial">Calificar scoring con OpenAI API e informar</option>
+                        <option value="Enviar SMS de alerta al equipo">Enviar Alerta SMS al Gerente de Ventas</option>
+                      </select>
+                    </div>
+
+                    <button type="submit" className="btn btn-primary" style={{ alignSelf: "flex-end", marginTop: "10px", padding: "10px 24px", fontSize: "0.85rem" }}>
+                      Activar Regla
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3D: FLUJOS DE TRABAJO (VISUAL WORKFLOWS) */}
+          {activeTab === "whatsapp-flow" && (
+            <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+              {/* KPIs Row */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "20px" }}>
+                <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Flujos Activos</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "var(--text-heading)" }}>2</span>
+                </div>
+                <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Nodos Totales</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "var(--primary)" }}>14</span>
+                </div>
+                <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Leads en Tránsito</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "#10b981" }}>18 Leads</span>
+                </div>
+                <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "bold" }}>Conversión Funnel</span>
+                  <span style={{ fontSize: "1.75rem", fontWeight: "bold", color: "var(--secondary)" }}>42.8%</span>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "24px", minHeight: "550px" }} className="contact-grid">
+                {/* Left Panel: Visual Canvas */}
+                <div className="glass-card" style={{ 
+                  padding: "30px", 
+                  display: "flex", 
+                  flexDirection: "column", 
+                  alignItems: "center", 
+                  justifyContent: "flex-start", 
+                  background: "var(--bg-column)",
+                  overflowX: "auto",
+                  position: "relative"
+                }}>
+                  <h4 style={{ margin: 0, alignSelf: "flex-start", color: "var(--text-heading)", marginBottom: "20px", fontSize: "1.1rem" }}>Lienzo del Recorrido de Captación</h4>
+                  
+                  {/* Flow Layout Container */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px", width: "100%", position: "relative" }}>
+                    
+                    {/* Node 1: Trigger */}
+                    <div 
+                      onClick={() => setSelectedFlowNodeId("trigger")}
+                      style={{
+                        padding: "12px 20px",
+                        borderRadius: "8px",
+                        background: selectedFlowNodeId === "trigger" ? "rgba(59, 130, 246, 0.15)" : "var(--bg-card)",
+                        border: "2px solid " + (selectedFlowNodeId === "trigger" ? "var(--primary)" : "var(--border-color)"),
+                        cursor: "pointer",
+                        zIndex: 2,
+                        minWidth: "220px",
+                        textAlign: "center",
+                        transition: "all 0.2s ease"
+                      }}
+                      className="hover-scale"
+                    >
+                      <span style={{ fontSize: "0.7rem", color: "var(--primary)", textTransform: "uppercase", fontWeight: "bold" }}>Disparador (Trigger)</span>
+                      <p style={{ margin: "4px 0 0 0", fontSize: "0.85rem", fontWeight: "bold", color: "var(--text-heading)" }}>Lead Entra</p>
+                    </div>
+
+                    {/* Arrow 1 */}
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" style={{ zIndex: 1, margin: "-12px 0" }}>
+                      <line x1="12" y1="0" x2="12" y2="24" strokeDasharray="4 2" />
+                      <polyline points="7 17 12 22 17 17" />
+                    </svg>
+
+                    {/* Node 2: AI Scoring */}
+                    <div 
+                      onClick={() => setSelectedFlowNodeId("ai-scoring")}
+                      style={{
+                        padding: "12px 20px",
+                        borderRadius: "8px",
+                        background: selectedFlowNodeId === "ai-scoring" ? "rgba(168, 85, 247, 0.15)" : "var(--bg-card)",
+                        border: "2px solid " + (selectedFlowNodeId === "ai-scoring" ? "#a855f7" : "var(--border-color)"),
+                        cursor: "pointer",
+                        zIndex: 2,
+                        minWidth: "220px",
+                        textAlign: "center",
+                        transition: "all 0.2s ease"
+                      }}
+                      className="hover-scale"
+                    >
+                      <span style={{ fontSize: "0.7rem", color: "#a855f7", textTransform: "uppercase", fontWeight: "bold" }}>IA (OpenAI API)</span>
+                      <p style={{ margin: "4px 0 0 0", fontSize: "0.85rem", fontWeight: "bold", color: "var(--text-heading)" }}>Clasificación de Scoring</p>
+                    </div>
+
+                    {/* Arrow 2 */}
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" style={{ zIndex: 1, margin: "-12px 0" }}>
+                      <line x1="12" y1="0" x2="12" y2="24" strokeDasharray="4 2" />
+                      <polyline points="7 17 12 22 17 17" />
+                    </svg>
+
+                    {/* Node 3: Decision */}
+                    <div 
+                      onClick={() => setSelectedFlowNodeId("decision")}
+                      style={{
+                        padding: "14px 20px",
+                        borderRadius: "10px",
+                        background: selectedFlowNodeId === "decision" ? "rgba(245, 158, 11, 0.15)" : "var(--bg-card)",
+                        border: "2px solid " + (selectedFlowNodeId === "decision" ? "#f59e0b" : "var(--border-color)"),
+                        cursor: "pointer",
+                        zIndex: 2,
+                        minWidth: "200px",
+                        textAlign: "center",
+                        clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
+                        transition: "all 0.2s ease"
+                      }}
+                      className="hover-scale"
+                    >
+                      <span style={{ fontSize: "0.65rem", color: "#f59e0b", textTransform: "uppercase", fontWeight: "bold" }}>Condicional</span>
+                      <p style={{ margin: "2px 0 0 0", fontSize: "0.8rem", fontWeight: "bold", color: "var(--text-heading)" }}>¿Es Clase A?</p>
+                    </div>
+
+                    {/* Splitting Container */}
+                    <div style={{ display: "flex", gap: "60px", width: "100%", justifyContent: "center", marginTop: "10px", position: "relative" }}>
+                      
+                      {/* Left Side: Yes Path */}
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px" }}>
+                        <div style={{ fontSize: "0.75rem", fontWeight: "bold", color: "#10b981", background: "rgba(16,185,129,0.12)", padding: "2px 8px", borderRadius: "4px" }}>SÍ (87%)</div>
+                        
+                        {/* Connection Line */}
+                        <svg width="2" height="30" fill="none" stroke="#10b981" strokeWidth="2"><line x1="0" y1="0" x2="0" y2="30" strokeDasharray="4 2" /></svg>
+
+                        {/* Node 4: WhatsApp */}
+                        <div 
+                          onClick={() => setSelectedFlowNodeId("whatsapp-send")}
+                          style={{
+                            padding: "12px 20px",
+                            borderRadius: "8px",
+                            background: selectedFlowNodeId === "whatsapp-send" ? "rgba(16, 185, 129, 0.15)" : "var(--bg-card)",
+                            border: "2px solid " + (selectedFlowNodeId === "whatsapp-send" ? "#10b981" : "var(--border-color)"),
+                            cursor: "pointer",
+                            zIndex: 2,
+                            minWidth: "180px",
+                            textAlign: "center",
+                            transition: "all 0.2s ease"
+                          }}
+                          className="hover-scale"
+                        >
+                          <span style={{ fontSize: "0.7rem", color: "#10b981", textTransform: "uppercase", fontWeight: "bold" }}>WhatsApp Oficial</span>
+                          <p style={{ margin: "4px 0 0 0", fontSize: "0.8rem", fontWeight: "bold", color: "var(--text-heading)" }}>Enviar PDF de Lote</p>
+                        </div>
+                      </div>
+
+                      {/* Right Side: No Path */}
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px" }}>
+                        <div style={{ fontSize: "0.75rem", fontWeight: "bold", color: "#ef4444", background: "rgba(239,68,68,0.12)", padding: "2px 8px", borderRadius: "4px" }}>NO (13%)</div>
+                        
+                        {/* Connection Line */}
+                        <svg width="2" height="30" fill="none" stroke="#ef4444" strokeWidth="2"><line x1="0" y1="0" x2="0" y2="30" strokeDasharray="4 2" /></svg>
+
+                        {/* Node 5: Email */}
+                        <div 
+                          onClick={() => setSelectedFlowNodeId("email-send")}
+                          style={{
+                            padding: "12px 20px",
+                            borderRadius: "8px",
+                            background: selectedFlowNodeId === "email-send" ? "rgba(59, 130, 246, 0.15)" : "var(--bg-card)",
+                            border: "2px solid " + (selectedFlowNodeId === "email-send" ? "#3b82f6" : "var(--border-color)"),
+                            cursor: "pointer",
+                            zIndex: 2,
+                            minWidth: "180px",
+                            textAlign: "center",
+                            transition: "all 0.2s ease"
+                          }}
+                          className="hover-scale"
+                        >
+                          <span style={{ fontSize: "0.7rem", color: "#3b82f6", textTransform: "uppercase", fontWeight: "bold" }}>Email de Respaldo</span>
+                          <p style={{ margin: "4px 0 0 0", fontSize: "0.8rem", fontWeight: "bold", color: "var(--text-heading)" }}>Enviar Catálogo Gral.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Convergence Arrow */}
+                    <div style={{ display: "flex", width: "100%", justifyContent: "center", marginTop: "10px" }}>
+                      <svg width="2" height="30" fill="none" stroke="var(--border-color)" strokeWidth="2"><line x1="0" y1="0" x2="0" y2="30" strokeDasharray="4 2" /></svg>
+                    </div>
+
+                    {/* Node 6: CRM Save */}
+                    <div 
+                      onClick={() => setSelectedFlowNodeId("db-save")}
+                      style={{
+                        padding: "12px 20px",
+                        borderRadius: "8px",
+                        background: selectedFlowNodeId === "db-save" ? "rgba(14, 165, 233, 0.15)" : "var(--bg-card)",
+                        border: "2px solid " + (selectedFlowNodeId === "db-save" ? "#0ea5e9" : "var(--border-color)"),
+                        cursor: "pointer",
+                        zIndex: 2,
+                        minWidth: "220px",
+                        textAlign: "center",
+                        transition: "all 0.2s ease"
+                      }}
+                      className="hover-scale"
+                    >
+                      <span style={{ fontSize: "0.7rem", color: "#0ea5e9", textTransform: "uppercase", fontWeight: "bold" }}>CRM Integrado</span>
+                      <p style={{ margin: "4px 0 0 0", fontSize: "0.85rem", fontWeight: "bold", color: "var(--text-heading)" }}>Registrar Lead & Asignar</p>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* Right Panel: Node Inspector */}
+                <div className="glass-card" style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: "1.25rem", fontFamily: "var(--font-title)", fontWeight: 400, color: "var(--text-heading)" }}>Inspector de Nodos</h3>
+                    <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: "4px 0 0 0" }}>Selecciona un nodo del flujo visual para configurar o ver métricas.</p>
+                  </div>
+
+                  <hr style={{ border: "none", borderTop: "1px solid var(--border-color)", margin: 0 }} />
+
+                  {/* Inspector Body */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    <div>
+                      <span style={{ 
+                        background: "rgba(59, 130, 246, 0.12)", 
+                        color: "var(--primary)", 
+                        fontSize: "0.7rem", 
+                        fontWeight: "bold", 
+                        padding: "4px 8px", 
+                        borderRadius: "4px",
+                        textTransform: "uppercase"
+                      }}>
+                        {FLOW_NODES[selectedFlowNodeId].type}
+                      </span>
+                      <h4 style={{ color: "var(--text-heading)", margin: "10px 0 6px 0", fontSize: "1.1rem" }}>
+                        {FLOW_NODES[selectedFlowNodeId].name}
+                      </h4>
+                    </div>
+
+                    <div>
+                      <h5 style={{ margin: "0 0 4px 0", fontSize: "0.8rem", color: "var(--text-heading)", fontWeight: "bold" }}>Descripción del Paso</h5>
+                      <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-muted)", lineHeight: "1.4" }}>
+                        {FLOW_NODES[selectedFlowNodeId].desc}
+                      </p>
+                    </div>
+
+                    <div style={{ background: "var(--bg-column)", border: "1px solid var(--border-color)", borderRadius: "6px", padding: "12px" }}>
+                      <h5 style={{ margin: "0 0 4px 0", fontSize: "0.8rem", color: "#f59e0b", fontWeight: "bold" }}>Métricas en Tiempo Real</h5>
+                      <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-main)", fontWeight: "500" }}>
+                        {FLOW_NODES[selectedFlowNodeId].stats}
+                      </p>
+                    </div>
+
+                    <div>
+                      <h5 style={{ margin: "0 0 6px 0", fontSize: "0.8rem", color: "var(--text-heading)", fontWeight: "bold" }}>Configuración del Paso</h5>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        <div>
+                          <label style={{ fontSize: "0.7rem", color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>Tiempo de Retardo (Delay)</label>
+                          <select className="form-control" style={{ padding: "8px", fontSize: "0.75rem", width: "100%", background: "var(--bg-column)", border: "1px solid var(--border-color)" }}>
+                            <option>Inmediato (Sin retraso)</option>
+                            <option>1 Minuto</option>
+                            <option>10 Minutos</option>
+                            <option>1 Hora</option>
+                            <option>24 Horas</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: "0.7rem", color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>Modo de Ejecución</label>
+                          <select className="form-control" style={{ padding: "8px", fontSize: "0.75rem", width: "100%", background: "var(--bg-column)", border: "1px solid var(--border-color)" }}>
+                            <option>Automático (Procesado por Servidor)</option>
+                            <option>Semiautomático (Requiere Aprobación CRM)</option>
+                            <option>Desactivado</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

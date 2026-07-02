@@ -20,8 +20,7 @@ const t = {
       titleControl: "Control",
       subtitle: "No dejes que los interesados se enfríen o queden olvidados en un Excel o chat de WhatsApp. Te damos tu propio portal premium y un sistema inteligente que responde al instante y organiza a tu equipo de ventas.",
       demoBtn: "Ver Demo",
-      contactBtn: "Agendar Consulta",
-      testimonial: "“La solución definitiva para dueños de inmobiliarias que quieren automatizar su crecimiento y proteger cada oportunidad de negocio.”"
+      contactBtn: "Agendar Consulta"
     },
     table: {
       badge: "Diferencia de Negocio",
@@ -156,14 +155,16 @@ const t = {
       bullet1: "Ideal para inmobiliarias, barrios cerrados, loteadoras y comercializadoras de propiedades.",
       bullet2: "Control total: La información de tus clientes y propiedades es 100% tuya, protegida bajo tu propia base de datos.",
       badge: "Hablemos hoy",
-      name: "Nombre Completo *",
+      name: "Nombre y Apellido *",
       namePlaceholder: "Ej. Juan Pérez",
       company: "Empresa / Inmobiliaria",
       companyPlaceholder: "Ej. Inmobiliaria Líder",
       email: "Correo Electrónico *",
       emailPlaceholder: "juan@empresa.com",
-      phone: "WhatsApp (con código de país)",
-      phonePlaceholder: "Ej. +5491122334455",
+      phone: "Teléfono/WhatsApp",
+      phonePlaceholder: "Ej. 099 123 456",
+      message: "Consulta *",
+      messagePlaceholder: "Escribe aquí tu consulta o mensaje...",
       btn: "Contáctame"
     },
     footer: {
@@ -212,8 +213,7 @@ const t = {
       titleControl: "Control",
       subtitle: "Don't let prospects go cold or get forgotten in an Excel sheet or WhatsApp chat. We give you your own premium portal and an intelligent system that responds instantly and organizes your sales team.",
       demoBtn: "View Demo",
-      contactBtn: "Schedule Consultation",
-      testimonial: "“The ultimate solution for real estate agency owners who want to automate growth and secure every business opportunity.”"
+      contactBtn: "Schedule Consultation"
     },
     table: {
       badge: "Business Difference",
@@ -348,14 +348,16 @@ const t = {
       bullet1: "Ideal for real estate agencies, gated communities, lot developers and property commercializers.",
       bullet2: "Total control: Your client and property data is 100% yours, protected under your own database.",
       badge: "Let's talk today",
-      name: "Full Name *",
+      name: "First and Last Name *",
       namePlaceholder: "e.g. John Doe",
       company: "Company / Real Estate Agency",
       companyPlaceholder: "e.g. Leading Real Estate",
       email: "Email Address *",
       emailPlaceholder: "john@company.com",
-      phone: "WhatsApp (with country code)",
-      phonePlaceholder: "e.g. +123456789",
+      phone: "Phone/WhatsApp",
+      phonePlaceholder: "e.g. 099 123 456",
+      message: "Inquiry *",
+      messagePlaceholder: "Write your inquiry or message here...",
       btn: "Contact me"
     },
     footer: {
@@ -404,8 +406,7 @@ const t = {
       titleControl: "Controle",
       subtitle: "Não deixe que os interessados esfriem ou fiquem esquecidos em planilhas de Excel ou conversas de WhatsApp. Entregamos seu próprio portal premium e um sistema inteligente que responde instantaneamente e organiza sua equipe de vendas.",
       demoBtn: "Ver Demo",
-      contactBtn: "Agendar Consulta",
-      testimonial: "“A solução definitiva para donos de imobiliárias que desejam automatizar o crescimento e proteger cada oportunidade de negócio.”"
+      contactBtn: "Agendar Consulta"
     },
     table: {
       badge: "Diferencial de Negócio",
@@ -540,14 +541,16 @@ const t = {
       bullet1: "Ideal para imobiliárias, condomínios fechados, loteadoras e comercializadoras de imóveis.",
       bullet2: "Controle total: As informações de seus clientes e imóveis são 100% suas, protegidas sob seu próprio banco de dados.",
       badge: "Fale conosco hoje",
-      name: "Nome Completo *",
+      name: "Nome e Sobrenome *",
       namePlaceholder: "Ex. João Silva",
       company: "Empresa / Imobiliária",
       companyPlaceholder: "Ex. Imobiliária Líder",
       email: "E-mail *",
       emailPlaceholder: "joao@empresa.com",
-      phone: "WhatsApp (com código do país)",
-      phonePlaceholder: "Ex. +5511999999999",
+      phone: "Telefone/WhatsApp",
+      phonePlaceholder: "Ex. 099 123 456",
+      message: "Consulta *",
+      messagePlaceholder: "Escreva aqui sua consulta ou mensagem...",
       btn: "Fale comigo"
     },
     footer: {
@@ -589,8 +592,11 @@ export default function Home() {
     empresa: "",
     email: "",
     whatsapp: "",
+    mensaje: "",
   });
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [activeMockTab, setActiveMockTab] = useState<"crm" | "wa" | "sat">("crm");
   const [hoveredLotId, setHoveredLotId] = useState<string | null>(null);
   
@@ -639,14 +645,63 @@ export default function Home() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.nombre || !formData.email) {
-      alert("Por favor completa los campos requeridos.");
+    if (!formData.nombre || !formData.email || !formData.mensaje) {
+      const alertMsg = language === 'es' 
+        ? "Por favor completa los campos requeridos." 
+        : language === 'pt' 
+        ? "Por favor, preencha os campos obrigatórios." 
+        : "Please complete the required fields.";
+      alert(alertMsg);
       return;
     }
-    // Simulate successful API call
-    setSubmitted(true);
+    
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const response = await fetch("https://formsubmit.co/ajax/contacto@n-sistemas.com", {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          Nombre: formData.nombre,
+          Empresa: formData.empresa,
+          Email: formData.email,
+          WhatsApp: formData.whatsapp,
+          Consulta: formData.mensaje,
+          "Enviado desde": "n-sistemas.com",
+          _subject: `Nueva consulta de ${formData.nombre} - n-sistemas.com`,
+          _captcha: "false",
+          _replyto: formData.email,
+          _template: "table"
+        })
+      });
+
+      if (response.ok) {
+        setSubmitted(true);
+      } else {
+        const errorMsg = language === 'es'
+          ? "Hubo un error al enviar el formulario. Por favor, intenta nuevamente."
+          : language === 'pt'
+          ? "Ocorreu um erro ao enviar o formulário. Por favor, tente novamente."
+          : "An error occurred while sending the form. Please try again.";
+        setSubmitError(errorMsg);
+      }
+    } catch (error) {
+      console.error("Error submitting contact form:", error);
+      const errorMsg = language === 'es'
+        ? "Hubo un error al enviar el formulario. Por favor, intenta nuevamente."
+        : language === 'pt'
+        ? "Ocorreu um erro ao enviar o formulário. Por favor, tente novamente."
+        : "An error occurred while sending the form. Please try again.";
+      setSubmitError(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -740,9 +795,6 @@ export default function Home() {
                 {t[language].hero.contactBtn}
               </a>
             </div>
-            <p style={{ marginTop: "24px", fontSize: "0.85rem", color: "var(--text-muted)", fontStyle: "italic" }}>
-              {t[language].hero.testimonial}
-            </p>
           </div>
 
           {/* Dashboard Mockup Preview */}
@@ -966,7 +1018,7 @@ export default function Home() {
       </section>
 
       {/* 3. Comparativa */}
-      <section className="section-padding" style={{ background: "rgba(1, 3, 10, 0.4)", borderTop: "1px solid var(--border-color)" }}>
+      <section className="section-padding" style={{ background: "var(--bg-section-muted)", borderTop: "1px solid var(--border-color)" }}>
         <div className="container">
           <div className="section-title-wrap text-center">
             <div className="badge">{t[language].table.badge}</div>
@@ -1151,7 +1203,7 @@ export default function Home() {
       </section>
 
       {/* 5. Beneficios comerciales */}
-      <section className="section-padding" style={{ background: "rgba(1, 3, 10, 0.4)", borderTop: "1px solid var(--border-color)" }}>
+      <section className="section-padding" style={{ background: "var(--bg-section-muted)", borderTop: "1px solid var(--border-color)" }}>
         <div className="container">
           <div className="section-title-wrap text-center">
             <div className="badge">{t[language].benefits.badge}</div>
@@ -1162,7 +1214,7 @@ export default function Home() {
           <div className="benefit-row">
             <div className="glass-card benefit-block">
               <div style={{ padding: "8px 12px", background: "rgba(59,130,246,0.15)", borderRadius: "6px", color: "var(--primary)", fontWeight: "bold", fontSize: "0.85rem" }}>01</div>
-              <h3 style={{ fontSize: "1.25rem", color: "white" }}>{t[language].benefits.b1.title}</h3>
+              <h3 style={{ fontSize: "1.25rem", color: "var(--text-heading)" }}>{t[language].benefits.b1.title}</h3>
               <p style={{ fontSize: "0.95rem" }}>
                 {t[language].benefits.b1.desc}
               </p>
@@ -1170,7 +1222,7 @@ export default function Home() {
 
             <div className="glass-card benefit-block">
               <div style={{ padding: "8px 12px", background: "rgba(6,182,212,0.15)", borderRadius: "6px", color: "var(--secondary)", fontWeight: "bold", fontSize: "0.85rem" }}>02</div>
-              <h3 style={{ fontSize: "1.25rem", color: "white" }}>{t[language].benefits.b2.title}</h3>
+              <h3 style={{ fontSize: "1.25rem", color: "var(--text-heading)" }}>{t[language].benefits.b2.title}</h3>
               <p style={{ fontSize: "0.95rem" }}>
                 {t[language].benefits.b2.desc}
               </p>
@@ -1178,7 +1230,7 @@ export default function Home() {
 
             <div className="glass-card benefit-block">
               <div style={{ padding: "8px 12px", background: "rgba(16,185,129,0.15)", borderRadius: "6px", color: "#10b981", fontWeight: "bold", fontSize: "0.85rem" }}>03</div>
-              <h3 style={{ fontSize: "1.25rem", color: "white" }}>{t[language].benefits.b3.title}</h3>
+              <h3 style={{ fontSize: "1.25rem", color: "var(--text-heading)" }}>{t[language].benefits.b3.title}</h3>
               <p style={{ fontSize: "0.95rem" }}>
                 {t[language].benefits.b3.desc}
               </p>
@@ -1275,7 +1327,7 @@ export default function Home() {
         <span className="section-divider-text">n-sistemas.com</span>
       </div>
 
-      <section className="section-padding" id="contacto" style={{ background: "rgba(1, 3, 10, 0.4)" }}>
+      <section className="section-padding" id="contacto" style={{ background: "var(--bg-section-muted)" }}>
         <div className="container">
           <div className="contact-grid">
             <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
@@ -1313,7 +1365,7 @@ export default function Home() {
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                     <polyline points="22 4 12 14.01 9 11.01" />
                   </svg>
-                  <h3 style={{ color: "white", marginBottom: "8px" }}>{t[language].form.title}</h3>
+                  <h3 style={{ color: "var(--text-heading)", marginBottom: "8px" }}>{t[language].form.title}</h3>
                   <p style={{ color: "var(--text-muted)", fontSize: "0.95rem" }}>
                     {t[language].form.success}
                   </p>
@@ -1376,8 +1428,29 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <button type="submit" className="btn btn-primary form-btn">
-                    {t[language].form.btn}
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="mensaje">{t[language].form.message}</label>
+                    <textarea
+                      id="mensaje"
+                      name="mensaje"
+                      required
+                      rows={4}
+                      className="form-control"
+                      placeholder={t[language].form.messagePlaceholder}
+                      value={formData.mensaje}
+                      onChange={handleInputChange}
+                      style={{ resize: "vertical", minHeight: "120px" }}
+                    />
+                  </div>
+
+                  {submitError && (
+                    <div style={{ color: "#ef4444", fontSize: "0.9rem", marginTop: "-8px", marginBottom: "16px", textAlign: "center", width: "100%" }}>
+                      {submitError}
+                    </div>
+                  )}
+
+                  <button type="submit" className="btn btn-primary form-btn" disabled={isSubmitting}>
+                    {isSubmitting ? (language === 'es' ? 'Enviando...' : language === 'pt' ? 'Enviando...' : 'Sending...') : t[language].form.btn}
                   </button>
                 </form>
               )}
@@ -1406,7 +1479,7 @@ export default function Home() {
 
           <div style={{ display: "flex", gap: "60px" }}>
             <div>
-              <h4 style={{ fontSize: "0.9rem", color: "white", marginBottom: "16px", textTransform: "uppercase" }}>{t[language].footer.navigation}</h4>
+              <h4 style={{ fontSize: "0.9rem", color: "var(--text-heading)", marginBottom: "16px", textTransform: "uppercase" }}>{t[language].footer.navigation}</h4>
               <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.85rem" }}>
                 <li><a href="#solucion" style={{ color: "var(--text-muted)" }}>{t[language].nav.solucion}</a></li>
                 <li><a href="#modulos" style={{ color: "var(--text-muted)" }}>{t[language].nav.modulos}</a></li>
@@ -1415,7 +1488,7 @@ export default function Home() {
               </ul>
             </div>
             <div>
-              <h4 style={{ fontSize: "0.9rem", color: "white", marginBottom: "16px", textTransform: "uppercase" }}>{t[language].footer.demoTitle}</h4>
+              <h4 style={{ fontSize: "0.9rem", color: "var(--text-heading)", marginBottom: "16px", textTransform: "uppercase" }}>{t[language].footer.demoTitle}</h4>
               <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.85rem" }}>
                 <li><Link href="/admin" style={{ color: "var(--text-muted)" }}>{t[language].demoMock.titleCrm}</Link></li>
                 <li><Link href="/admin" style={{ color: "var(--text-muted)" }}>{t[language].demoMock.titleWa}</Link></li>
