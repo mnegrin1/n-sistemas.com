@@ -452,8 +452,8 @@ a {
 }
 
 .header .logo {
-  padding: 8px 24px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 70%);
+  padding: 4px 12px;
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 50%);
   border: none;
   border-radius: 0;
   backdrop-filter: none;
@@ -464,7 +464,7 @@ a {
 
 .header .logo:hover {
   opacity: 0.85;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 70%);
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 50%);
   border: none;
   box-shadow: none;
 }
@@ -1476,8 +1476,8 @@ html.light-theme .admin-nav-item:hover, html.light-theme .admin-nav-item.active 
   display: inline-flex;
   align-items: baseline;
   vertical-align: middle;
-  padding: 6px 20px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 70%);
+  padding: 4px 12px;
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 50%);
   border: none;
   border-radius: 0;
   backdrop-filter: none;
