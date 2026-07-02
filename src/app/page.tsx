@@ -980,7 +980,14 @@ export default function Home() {
                 <tr>
                   <th>{t[language].table.headers[0]}</th>
                   <th>{t[language].table.headers[1]}</th>
-                  <th>{t[language].table.headers[2]}</th>
+                  <th>
+                    {language === 'es' && "Solución "}
+                    {language === 'pt' && "Solução "}
+                    <span className="table-header-logo">
+                      n-sistemas<span className="table-header-logo-dot">.com</span>
+                    </span>
+                    {language === 'en' && " Solution"}
+                  </th>
                 </tr>
               </thead>
               <tbody>

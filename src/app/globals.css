@@ -1446,3 +1446,23 @@ html.light-theme .admin-nav-item:hover, html.light-theme .admin-nav-item.active 
     grid-template-columns: 1.15fr 0.85fr;
   }
 }
+
+/* Table Header Logo Custom Styles */
+.table-header-logo {
+  font-family: var(--font-title), sans-serif;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  text-transform: lowercase;
+  color: var(--secondary);
+  font-size: 1.25rem;
+  display: inline-flex;
+  align-items: baseline;
+  vertical-align: baseline;
+  margin: 0 4px;
+}
+
+.table-header-logo-dot {
+  font-weight: 400;
+  opacity: 0.85;
+  font-size: 0.55em;
+}
